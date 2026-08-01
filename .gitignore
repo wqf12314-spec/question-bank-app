@@ -1,0 +1,17 @@
+node_modules/
+dist/
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db
+*.local
+
+.vscode/
+.idea/
+.vite-*.log
+
+Vue题库项目学习笔记.md
+项目日志.md

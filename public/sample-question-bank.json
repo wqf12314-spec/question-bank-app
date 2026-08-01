@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "title": "Vue 3 中 ref 的作用是什么？",
+      "answer": "ref 用于创建响应式值。在 JavaScript 中通过 .value 读取和修改，在 Vue 模板中会自动解包。",
+      "category": "Vue",
+      "tags": ["ref", "响应式", "Composition API"],
+      "difficulty": "基础"
+    },
+    {
+      "title": "computed 和 watch 有什么区别？",
+      "answer": "computed 用于根据响应式数据派生一个可缓存的结果；watch 用于监听数据变化并执行副作用，例如请求、保存或调用函数。",
+      "category": "Vue",
+      "tags": ["computed", "watch", "响应式副作用"],
+      "difficulty": "进阶"
+    },
+    {
+      "title": "v-if 和 v-show 的区别是什么？",
+      "answer": "v-if 会根据条件创建或销毁 DOM，适合切换频率低的场景；v-show 始终保留 DOM，只切换 display，适合频繁切换。",
+      "category": "Vue",
+      "tags": ["指令", "条件渲染"],
+      "difficulty": "基础"
+    },
+    {
+      "title": "JavaScript 的闭包是什么？",
+      "answer": "闭包是函数与其词法环境的组合。内部函数即使在外部函数执行结束后，仍然可以访问外部作用域中的变量。",
+      "category": "JavaScript",
+      "tags": ["闭包", "作用域"],
+      "difficulty": "进阶"
+    },
+    {
+      "title": "filter 和 includes 分别返回什么？",
+      "answer": "filter 返回由符合条件的元素组成的新数组；includes 返回布尔值，表示数组或字符串是否包含指定内容。",
+      "category": "JavaScript",
+      "tags": ["数组方法", "filter", "includes"],
+      "difficulty": "基础"
+    },
+    {
+      "title": "CSS 中 > 和 + 选择器分别表示什么？",
+      "answer": "> 选择直接子元素；+ 选择紧跟在指定元素后面的第一个相邻兄弟元素。",
+      "category": "CSS",
+      "tags": ["选择器", "兄弟选择器"],
+      "difficulty": "基础"
+    },
+    {
+      "title": "Flex 布局中 justify-content 和 align-items 的区别是什么？",
+      "answer": "justify-content 控制主轴方向的排列，align-items 控制交叉轴方向的对齐。主轴方向由 flex-direction 决定。",
+      "category": "CSS",
+      "tags": ["Flex", "布局"],
+      "difficulty": "基础"
+    },
+    {
+      "title": "HTML 中 label 元素为什么重要？",
+      "answer": "label 为表单控件提供可访问名称。正确关联后，点击 label 可以聚焦或切换对应控件，也能帮助屏幕阅读器理解表单。",
+      "category": "HTML",
+      "tags": ["表单", "可访问性"],
+      "difficulty": "基础"
+    }
+  ]
+}
