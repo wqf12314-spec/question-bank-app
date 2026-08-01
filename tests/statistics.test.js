@@ -49,15 +49,15 @@ test("getStats calculates question practice progress", async () => {
 test("buildPracticeActivity groups records by day for twelve weeks", async () => {
   const { buildPracticeActivity } = await import("../src/utils/statistics.js");
   const records = [
-    { practicedAt: "2026-07-23T01:00:00+08:00" },
-    { practicedAt: "2026-07-23T18:00:00+08:00" },
-    { practicedAt: "2026-07-24T09:00:00+08:00" },
+    { practicedAt: new Date(2026, 6, 23, 1).toISOString() },
+    { practicedAt: new Date(2026, 6, 23, 18).toISOString() },
+    { practicedAt: new Date(2026, 6, 24, 9).toISOString() },
   ];
 
   const activity = buildPracticeActivity(
     records,
     84,
-    new Date("2026-07-24T12:00:00+08:00")
+    new Date(2026, 6, 24, 12)
   );
 
   assert.equal(activity.length, 84);
