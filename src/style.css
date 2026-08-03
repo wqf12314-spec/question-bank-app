@@ -569,6 +569,17 @@ body {
   cursor: not-allowed;
 }
 
+.questions-toolbar .clear-button {
+  border-color: rgba(255, 107, 107, 0.72);
+  color: #ff8d8d;
+}
+
+.questions-toolbar .clear-button:not(:disabled):hover {
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.14);
+  color: #ffd4d4;
+}
+
 .import-panel {
   margin-bottom: 16px;
   padding: 16px;
@@ -639,6 +650,13 @@ body {
 .import-error {
   margin: 12px 0 0;
   color: #ff8b8b;
+}
+
+.import-notice,
+.import-duplicate-summary {
+  margin: 12px 0;
+  color: #35b87f;
+  font-weight: 700;
 }
 
 .import-preview {

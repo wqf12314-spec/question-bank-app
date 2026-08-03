@@ -16,7 +16,10 @@ import {
   getTopicsForCategory,
   parseTags,
 } from "../utils/questionFields";
-import { createQuestionBankPayload } from "../utils/questionTransfer";
+import {
+  createQuestionBankPayload,
+  filterNewQuestions,
+} from "../utils/questionTransfer";
 
 const questionsStore = useQuestionsStore();
 const searchKeyword = ref("");
@@ -26,7 +29,9 @@ const editingId = ref(null);
 const showImport = ref(false);
 const importText = ref("");
 const importPreview = ref([]);
+const importDuplicateCount = ref(0);
 const importError = ref("");
+const importNotice = ref("");
 const title = ref("");
 const answer = ref("");
 const category = ref("");
@@ -116,6 +121,23 @@ function removeQuestion(id) {
   }
 }
 
+function clearQuestionBank() {
+  const questionCount = questionsStore.questions.length;
+  if (questionCount === 0) return;
+
+  const confirmed = window.confirm(
+    `确定删除全部 ${questionCount} 道题吗？此操作无法撤销。`
+  );
+  if (!confirmed) return;
+
+  questionsStore.clearQuestions();
+  resetForm();
+  searchKeyword.value = "";
+  selectedCategory.value = "";
+  selectedTag.value = "";
+  importNotice.value = `已删除全部 ${questionCount} 道题。`;
+}
+
 function startEdit(question) {
   editingId.value = question.id;
   title.value = question.title;
@@ -128,6 +150,8 @@ function startEdit(question) {
 function validateImport() {
   importError.value = "";
   importPreview.value = [];
+  importDuplicateCount.value = 0;
+  importNotice.value = "";
 
   try {
     const data = JSON.parse(importText.value);
@@ -144,7 +168,7 @@ function validateImport() {
       throw new Error("questions 必须是数组");
     }
 
-    importPreview.value = data.questions.map((question, index) => {
+    const validatedQuestions = data.questions.map((question, index) => {
       const position = index + 1;
 
       if (!question || typeof question !== "object" || Array.isArray(question)) {
@@ -187,11 +211,19 @@ function validateImport() {
       };
     });
 
-    if (importPreview.value.length === 0) {
+    if (validatedQuestions.length === 0) {
       throw new Error("questions 中至少需要一道题");
     }
+
+    const result = filterNewQuestions(
+      questionsStore.questions,
+      validatedQuestions
+    );
+    importPreview.value = result.questions;
+    importDuplicateCount.value = result.duplicateCount;
   } catch (error) {
     importPreview.value = [];
+    importDuplicateCount.value = 0;
     importError.value =
       error instanceof SyntaxError
         ? `JSON 格式错误：${error.message}`
@@ -238,6 +270,7 @@ function confirmImport() {
   if (importPreview.value.length === 0) return;
 
   const now = new Date().toISOString();
+  const previewDuplicateCount = importDuplicateCount.value;
   const questions = importPreview.value.map((question) => ({
     ...question,
     id: crypto.randomUUID(),
@@ -245,9 +278,12 @@ function confirmImport() {
     updatedAt: now,
   }));
 
-  questionsStore.addQuestions(questions);
+  const result = questionsStore.addQuestions(questions);
+  const skippedCount = previewDuplicateCount + result.duplicateCount;
+  importNotice.value = `已新增 ${result.addedCount} 道，跳过 ${skippedCount} 道重复题。`;
   importText.value = "";
   importPreview.value = [];
+  importDuplicateCount.value = 0;
   importError.value = "";
   showImport.value = false;
 }
@@ -286,8 +322,19 @@ function exportQuestions() {
         <Download :size="17" aria-hidden="true" />
         导出题库
       </button>
+      <button
+        type="button"
+        class="clear-button"
+        :disabled="questionsStore.questions.length === 0"
+        @click="clearQuestionBank"
+      >
+        <Trash2 :size="17" aria-hidden="true" />
+        清空题库
+      </button>
       </div>
     </header>
+
+    <p v-if="importNotice" class="import-notice">{{ importNotice }}</p>
 
     <section v-if="showImport" class="import-panel">
       <label>
@@ -331,8 +378,15 @@ function exportQuestions() {
 
       <p v-if="importError" class="import-error">{{ importError }}</p>
 
-      <div v-if="importPreview.length" class="import-preview">
-        <p>校验通过，共 {{ importPreview.length }} 道题：</p>
+      <p v-if="importDuplicateCount" class="import-duplicate-summary">
+        将跳过 {{ importDuplicateCount }} 道重复题。
+      </p>
+
+      <div
+        v-if="importPreview.length || importDuplicateCount"
+        class="import-preview"
+      >
+        <p>校验通过，可新增 {{ importPreview.length }} 道题：</p>
         <ol>
           <li
             v-for="(question, index) in importPreview"
