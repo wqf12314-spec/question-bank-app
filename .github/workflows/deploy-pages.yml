@@ -34,11 +34,12 @@ jobs:
         run: npm ci
 
       - name: Test
-        run: npm test
+        run: node --test tests/*.test.js
 
       - name: Build
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: npm run build
 
       - name: Upload Pages artifact

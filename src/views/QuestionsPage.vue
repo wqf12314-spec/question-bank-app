@@ -76,7 +76,7 @@ function resetForm() {
   difficulty.value = "基础";
 }
 
-function saveQuestion() {
+async function saveQuestion() {
   if (!title.value.trim()) return;
 
   const now = new Date().toISOString();
@@ -90,18 +90,14 @@ function saveQuestion() {
   };
 
   if (editingId.value === null) {
-    questionsStore.addQuestion({
-      id: Date.now(),
-      ...formValues,
-      createdAt: now,
-    });
+    await questionsStore.addQuestion(formValues);
   } else {
     const index = questionsStore.questions.findIndex((question) => {
       return question.id === editingId.value;
     });
 
     if (index !== -1) {
-      questionsStore.updateQuestion(index, {
+      await questionsStore.updateQuestion(index, {
         ...questionsStore.questions[index],
         ...formValues,
       });
@@ -111,17 +107,17 @@ function saveQuestion() {
   resetForm();
 }
 
-function removeQuestion(id) {
+async function removeQuestion(id) {
   const index = questionsStore.questions.findIndex((question) => {
     return question.id === id;
   });
 
   if (index !== -1) {
-    questionsStore.removeQuestion(index);
+    await questionsStore.removeQuestion(index);
   }
 }
 
-function clearQuestionBank() {
+async function clearQuestionBank() {
   const questionCount = questionsStore.questions.length;
   if (questionCount === 0) return;
 
@@ -130,7 +126,7 @@ function clearQuestionBank() {
   );
   if (!confirmed) return;
 
-  questionsStore.clearQuestions();
+  await questionsStore.clearQuestions();
   resetForm();
   searchKeyword.value = "";
   selectedCategory.value = "";
@@ -266,7 +262,7 @@ async function handleImportFile(event) {
   }
 }
 
-function confirmImport() {
+async function confirmImport() {
   if (importPreview.value.length === 0) return;
 
   const now = new Date().toISOString();
@@ -278,7 +274,7 @@ function confirmImport() {
     updatedAt: now,
   }));
 
-  const result = questionsStore.addQuestions(questions);
+  const result = await questionsStore.importQuestions(questions);
   const skippedCount = previewDuplicateCount + result.duplicateCount;
   importNotice.value = `已新增 ${result.addedCount} 道，跳过 ${skippedCount} 道重复题。`;
   importText.value = "";
@@ -310,27 +306,19 @@ function exportQuestions() {
       <h1 class="page-title">题库管理</h1>
 
       <div class="questions-toolbar">
-      <button type="button" @click="showImport = !showImport">
-        <Upload :size="17" aria-hidden="true" />
-        {{ showImport ? "收起批量导入" : "批量导入" }}
-      </button>
-      <button
-        type="button"
-        :disabled="questionsStore.questions.length === 0"
-        @click="exportQuestions"
-      >
-        <Download :size="17" aria-hidden="true" />
-        导出题库
-      </button>
-      <button
-        type="button"
-        class="clear-button"
-        :disabled="questionsStore.questions.length === 0"
-        @click="clearQuestionBank"
-      >
-        <Trash2 :size="17" aria-hidden="true" />
-        清空题库
-      </button>
+        <button type="button" @click="showImport = !showImport">
+          <Upload :size="17" aria-hidden="true" />
+          {{ showImport ? "收起批量导入" : "批量导入" }}
+        </button>
+        <button type="button" :disabled="questionsStore.questions.length === 0" @click="exportQuestions">
+          <Download :size="17" aria-hidden="true" />
+          导出题库
+        </button>
+        <button type="button" class="clear-button" :disabled="questionsStore.questions.length === 0"
+          @click="clearQuestionBank">
+          <Trash2 :size="17" aria-hidden="true" />
+          清空题库
+        </button>
       </div>
     </header>
 
@@ -339,39 +327,24 @@ function exportQuestions() {
     <section v-if="showImport" class="import-panel">
       <label>
         <span>题库 JSON</span>
-        <textarea
-          v-model="importText"
-          placeholder='粘贴 { "schemaVersion": 1, "questions": [...] }'
-        ></textarea>
+        <textarea v-model="importText" placeholder='粘贴 { "schemaVersion": 1, "questions": [...] }'></textarea>
       </label>
 
       <label class="import-file-field">
         <span>选择 JSON 文件</span>
-        <input
-          type="file"
-          accept=".json,application/json"
-          @change="handleImportFile"
-        />
+        <input type="file" accept=".json,application/json" @change="handleImportFile" />
       </label>
 
       <div class="sample-actions">
         <button type="button" @click="loadSampleQuestions">载入示例</button>
-        <a
-          class="sample-download"
-          :href="sampleQuestionBankUrl"
-          download="sample-question-bank.json"
-        >
+        <a class="sample-download" :href="sampleQuestionBankUrl" download="sample-question-bank.json">
           下载示例 JSON
         </a>
       </div>
 
       <div class="import-actions">
         <button type="button" @click="validateImport">校验并预览</button>
-        <button
-          type="button"
-          :disabled="importPreview.length === 0"
-          @click="confirmImport"
-        >
+        <button type="button" :disabled="importPreview.length === 0" @click="confirmImport">
           确认导入 {{ importPreview.length }} 道
         </button>
       </div>
@@ -382,16 +355,10 @@ function exportQuestions() {
         将跳过 {{ importDuplicateCount }} 道重复题。
       </p>
 
-      <div
-        v-if="importPreview.length || importDuplicateCount"
-        class="import-preview"
-      >
+      <div v-if="importPreview.length || importDuplicateCount" class="import-preview">
         <p>校验通过，可新增 {{ importPreview.length }} 道题：</p>
         <ol>
-          <li
-            v-for="(question, index) in importPreview"
-            :key="`${question.title}-${index}`"
-          >
+          <li v-for="(question, index) in importPreview" :key="`${question.title}-${index}`">
             {{ question.title }} · {{ question.category }} ·
             {{ question.difficulty }}
           </li>
@@ -402,22 +369,14 @@ function exportQuestions() {
     <div class="question-filters filter-panel">
       <label class="search-field">
         <span>搜索题目</span>
-        <input
-          v-model="searchKeyword"
-          type="search"
-          placeholder="搜索题目、答案或标签"
-        />
+        <input v-model="searchKeyword" type="search" placeholder="搜索题目、答案或标签" />
       </label>
 
       <label class="category-filter-field">
         <span>一级分类</span>
         <select v-model="selectedCategory">
           <option value="">全部分类</option>
-          <option
-            v-for="item in availableCategories"
-            :key="item"
-            :value="item"
-          >
+          <option v-for="item in availableCategories" :key="item" :value="item">
             {{ item }}
           </option>
         </select>
@@ -446,10 +405,7 @@ function exportQuestions() {
 
       <label>
         <span>答案</span>
-        <textarea
-          v-model="answer"
-          placeholder="写下这道题的答案"
-        ></textarea>
+        <textarea v-model="answer" placeholder="写下这道题的答案"></textarea>
       </label>
 
       <label>
@@ -459,11 +415,7 @@ function exportQuestions() {
 
       <label>
         <span>二级知识点</span>
-        <input
-          v-model="tagsText"
-          type="text"
-          placeholder="例如：闭包, 作用域, this"
-        />
+        <input v-model="tagsText" type="text" placeholder="例如：闭包, 作用域, this" />
       </label>
 
       <label>
@@ -481,12 +433,7 @@ function exportQuestions() {
           <Save v-else :size="17" aria-hidden="true" />
           {{ editingId === null ? "添加题目" : "保存修改" }}
         </button>
-        <button
-          v-if="editingId !== null"
-          type="button"
-          class="cancel-button"
-          @click="resetForm"
-        >
+        <button v-if="editingId !== null" type="button" class="cancel-button" @click="resetForm">
           <X :size="17" aria-hidden="true" />
           取消
         </button>
@@ -502,10 +449,7 @@ function exportQuestions() {
         </p>
       </header>
 
-      <div
-        v-if="questionsStore.questions.length === 0"
-        class="empty-state"
-      >
+      <div v-if="questionsStore.questions.length === 0" class="empty-state">
         <h2>暂无题目</h2>
         <p>添加第一道题后，它会显示在这里。</p>
       </div>
@@ -516,37 +460,22 @@ function exportQuestions() {
       </div>
 
       <div v-else class="question-list">
-        <article
-          v-for="question in filteredQuestions"
-          :key="question.id"
-          class="question-item"
-        >
+        <article v-for="question in filteredQuestions" :key="question.id" class="question-item">
           <header class="question-header">
             <h2>{{ question.title }}</h2>
             <div class="question-actions">
-              <RouterLink
-                class="practice-link"
-                :to="{
-                  name: 'practice',
-                  query: { questionId: question.id },
-                }"
-              >
+              <RouterLink class="practice-link" :to="{
+                name: 'practice',
+                query: { questionId: question.id },
+              }">
                 <Play :size="16" aria-hidden="true" />
                 开始练习
               </RouterLink>
-              <button
-                type="button"
-                class="edit-button"
-                @click="startEdit(question)"
-              >
+              <button type="button" class="edit-button" @click="startEdit(question)">
                 <Pencil :size="16" aria-hidden="true" />
                 编辑
               </button>
-              <button
-                type="button"
-                class="delete-button"
-                @click="removeQuestion(question.id)"
-              >
+              <button type="button" class="delete-button" @click="removeQuestion(question.id)">
                 <Trash2 :size="16" aria-hidden="true" />
                 删除
               </button>
@@ -558,11 +487,7 @@ function exportQuestions() {
             <span class="question-difficulty">
               {{ question.difficulty || "基础" }}
             </span>
-            <span
-              v-for="tag in question.tags || []"
-              :key="tag"
-              class="question-tag"
-            >
+            <span v-for="tag in question.tags || []" :key="tag" class="question-tag">
               {{ tag }}
             </span>
           </div>

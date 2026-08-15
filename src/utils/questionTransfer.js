@@ -4,7 +4,7 @@ export function normalizeQuestionTitle(title) {
     .trim()
     .toLocaleLowerCase("zh-CN")
     .replace(/\s+/g, "")
-    .replace(/[?？!！。]+$/u, "");
+    .replace(/[?!]+$/u, "");
 }
 
 export function dedupeQuestionsByTitle(questions) {
@@ -33,7 +33,7 @@ export function filterNewQuestions(existingQuestions, incomingQuestions) {
   const seenTitles = new Set(
     existingQuestions
       .map((question) => normalizeQuestionTitle(question?.title))
-      .filter(Boolean)
+      .filter(Boolean),
   );
   const newQuestions = [];
   let duplicateCount = 0;
@@ -57,7 +57,7 @@ export function filterNewQuestions(existingQuestions, incomingQuestions) {
 
 export function createQuestionBankPayload(
   questions,
-  exportedAt = new Date().toISOString()
+  exportedAt = new Date().toISOString(),
 ) {
   return {
     schemaVersion: 1,
@@ -65,9 +65,9 @@ export function createQuestionBankPayload(
     questions: questions.map((question) => ({
       title: question.title,
       answer: question.answer || "",
-      category: question.category || "未分类",
+      category: question.category || "\u672a\u5206\u7c7b",
       tags: [...(question.tags || [])],
-      difficulty: question.difficulty || "基础",
+      difficulty: question.difficulty || "\u57fa\u7840",
     })),
   };
 }

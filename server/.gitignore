@@ -1,0 +1,13 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Local SQLite data and downloaded agent metadata are machine-specific.
+dev.db
+dev.db-*
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
