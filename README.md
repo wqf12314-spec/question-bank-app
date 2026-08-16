@@ -80,6 +80,28 @@ src/
 └── views/       首页、题库、刷题和统计页面
 ```
 
+## Windows Electron 桌面版
+
+桌面版不是另一套项目。Electron 直接加载同一份 `src/` Vue 前端，因此网页端新增知识点或修改业务功能后，重新构建即可同时更新两端。
+
+[下载 Windows 安装包](https://github.com/wqf12314-spec/question-bank-app/releases/download/v1.0.0/Knowledge-Navigator-Setup-1.0.0.exe)
+
+```bash
+# 开发模式
+npm run desktop:dev
+
+# 构建 Windows 安装包
+npm run desktop:dist
+```
+
+安装包输出到 `release/`。NSIS 安装时会创建“知识航线”桌面快捷方式。桌面窗口默认使用紧凑悬浮布局并始终置顶，支持拖动、缩放、最小化、最大化和关闭；题库编辑、统计与数据迁移收在下方折叠区。
+
+### 网页数据迁移到桌面
+
+浏览器和 Electron 属于两个独立的安全存储空间，无法可靠地自动读取彼此的 `localStorage`。先在网页版页面底部展开“学习数据备份与迁移”并导出，再在桌面版下方“题库与设置 -> 数据”中导入。备份会包含全部 `localStorage` 键，包括练习记录、离线题库、收藏和后续新增的本地设置。
+
+桌面版还会把这些数据同步到 `%APPDATA%\知识航线\learning-data.json`，应用重启和覆盖升级后会先恢复数据，再创建 Pinia Store。
+
 ## License
 
 [MIT](LICENSE)

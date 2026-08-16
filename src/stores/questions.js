@@ -1,9 +1,13 @@
 // 部署时读取线上后端地址；本地没配置时继续使用本机后端。
 const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL || "http://localhost:3002";
+  import.meta.env?.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" && window.desktopAPI?.isDesktop
+    ? "https://question-bank-api-2vsg.onrender.com"
+    : "http://localhost:3002");
 
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
+import { apiFetch } from "../utils/apiClient.js";
 import {
   dedupeQuestionsByTitle,
   filterNewQuestions,
@@ -21,7 +25,7 @@ export const useQuestionsStore = defineStore("questions", () => {
   }
 
   async function createQuestion(question) {
-    const response = await fetch(`${API_BASE_URL}/questions`, {
+    const response = await apiFetch(`${API_BASE_URL}/questions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -53,7 +57,7 @@ export const useQuestionsStore = defineStore("questions", () => {
   }
 
   async function importQuestions(nextQuestions) {
-    const response = await fetch(`${API_BASE_URL}/questions/import`, {
+    const response = await apiFetch(`${API_BASE_URL}/questions/import`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // 后端以 schemaVersion 校验整份题库，以标题统一查重。
@@ -87,7 +91,7 @@ export const useQuestionsStore = defineStore("questions", () => {
 
   async function updateQuestionOnServer(index, nextQuestion) {
     const currentQuestion = questions.value[index];
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/questions/${currentQuestion.id}`,
       {
         method: "PATCH",
@@ -122,7 +126,7 @@ export const useQuestionsStore = defineStore("questions", () => {
 
   async function removeQuestionOnServer(index) {
     const question = questions.value[index];
-    const response = await fetch(`${API_BASE_URL}/questions/${question.id}`, {
+    const response = await apiFetch(`${API_BASE_URL}/questions/${question.id}`, {
       method: "DELETE",
     });
 
@@ -143,7 +147,7 @@ export const useQuestionsStore = defineStore("questions", () => {
   }
 
   async function clearQuestionsOnServer() {
-    const response = await fetch(`${API_BASE_URL}/questions`, {
+    const response = await apiFetch(`${API_BASE_URL}/questions`, {
       method: "DELETE",
     });
 
@@ -184,7 +188,7 @@ export const useQuestionsStore = defineStore("questions", () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/questions`);
+      const response = await apiFetch(`${API_BASE_URL}/questions`);
       if (!response.ok) {
         throw new Error("获取题目失败");
       }

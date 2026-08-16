@@ -788,3 +788,47 @@ body {
     margin: 0 auto;
   }
 }
+
+/* Electron 使用同一套页面，只压缩外壳密度，不复制业务组件。 */
+.desktop-shell .desktop-practice .page-header {
+  display: none;
+}
+
+.desktop-shell .desktop-practice .practice-filters {
+  padding: 10px;
+}
+
+.desktop-shell .desktop-practice .practice-panel {
+  padding: 14px;
+}
+
+.desktop-shell .desktop-practice .practice-heading h2 {
+  font-size: 19px;
+}
+
+.desktop-shell .desktop-practice .practice-answer-field textarea {
+  min-height: 104px;
+}
+
+.desktop-shell .desktop-practice .review-history {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.desktop-shell .desktop-tools .questions-page,
+.desktop-shell .desktop-tools .stats-page {
+  max-width: none;
+  margin: 0;
+}
+
+.desktop-shell .desktop-tools .questions-toolbar,
+.desktop-shell .desktop-tools .question-actions {
+  flex-wrap: wrap;
+}
+
+.desktop-shell .desktop-tools .question-filters,
+.desktop-shell .desktop-tools .question-form,
+.desktop-shell .desktop-tools .stats-grid,
+.desktop-shell .desktop-tools .stats-distributions {
+  grid-template-columns: 1fr;
+}

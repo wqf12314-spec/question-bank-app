@@ -1,5 +1,7 @@
 node_modules/
 dist/
+release/
+Electron桌面版架构与面试笔记.md
 
 .env
 .env.*
