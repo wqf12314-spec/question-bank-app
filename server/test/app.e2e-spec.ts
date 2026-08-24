@@ -7,6 +7,7 @@ import { AppModule } from './../src/app.module';
 import { configureApp } from './../src/configure-app';
 import { PrismaService } from './../src/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -321,5 +322,101 @@ describe('AppController (e2e)', () => {
       .expect(400);
 
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('登录签发短期 Access Token 并创建 RefreshSession', async () => {
+    await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'login-e2e@example.test',
+      password: 'correct-password-123',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'LOGIN-e2e@example.test',
+        password: 'correct-password-123',
+      })
+      .expect(201);
+
+    expect(response.body.data.user).toMatchObject({
+      email: 'login-e2e@example.test',
+      role: 'LEARNER',
+    });
+    expect(response.body.data.refreshToken).toBeTruthy();
+    const payload = jwt.verify(
+      response.body.data.accessToken,
+      process.env.ACCESS_TOKEN_SECRET!,
+      { issuer: 'question-bank-api', audience: 'question-bank-client' },
+    ) as jwt.JwtPayload;
+    expect(payload.sub).toEqual(expect.any(Number));
+    expect(payload.exp! - payload.iat!).toBe(15 * 60);
+    expect(await app.get(PrismaService).refreshSession.count()).toBe(1);
+  });
+
+  it('Refresh Token 轮换会撤销旧 Session，退出后不能再次刷新', async () => {
+    await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'rotation-e2e@example.test',
+      password: 'correct-password-123',
+    });
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'rotation-e2e@example.test',
+        password: 'correct-password-123',
+      })
+      .expect(201);
+    const oldRefreshToken = login.body.data.refreshToken;
+
+    const refreshed = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: oldRefreshToken })
+      .expect(201);
+    expect(refreshed.body.data.refreshToken).not.toBe(oldRefreshToken);
+    expect(
+      await app.get(PrismaService).refreshSession.count({
+        where: { revokedAt: { not: null } },
+      }),
+    ).toBe(1);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: oldRefreshToken })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .send({ refreshToken: refreshed.body.data.refreshToken })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: refreshed.body.data.refreshToken })
+      .expect(401);
+  });
+
+  it('错误密码和不存在账号都返回 401', async () => {
+    await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'invalid-login-e2e@example.test',
+      password: 'correct-password-123',
+    });
+
+    const wrongPassword = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'invalid-login-e2e@example.test',
+        password: 'wrong-password-123',
+      })
+      .expect(401);
+    expect(wrongPassword.body.error.message).toBe('Invalid email or password');
+
+    const missingAccount = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'missing-login-e2e@example.test',
+        password: 'wrong-password-123',
+      })
+      .expect(401);
+    expect(missingAccount.body.error.message).toBe(
+      wrongPassword.body.error.message,
+    );
   });
 });
