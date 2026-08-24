@@ -6,6 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { configureApp } from './../src/configure-app';
 import { PrismaService } from './../src/prisma/prisma.service';
+import * as bcrypt from 'bcryptjs';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -282,7 +283,10 @@ describe('AppController (e2e)', () => {
       where: { email: 'register-e2e@example.test' },
     });
 
-    expect(saved?.passwordHash).not.toBe('correct-password-123');
+    expect(saved?.passwordHash).toMatch(/^\$2[aby]\$/);
+    expect(
+      await bcrypt.compare('correct-password-123', saved!.passwordHash),
+    ).toBe(true);
   });
 
   it('重复邮箱注册返回 409', async () => {
