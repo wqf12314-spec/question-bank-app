@@ -42,6 +42,16 @@ npm test
 npm run build
 ```
 
+后端 Questions API 使用独立的 PostgreSQL 测试数据库，避免测试数据写入正式题库：
+
+```bash
+cd server
+npm run test:e2e -- --runInBand
+npm run build
+```
+
+E2E 测试通过 `server/.env.test` 中的 `TEST_DATABASE_URL` 连接测试库，覆盖正常导入、批内重复、库内重复、10 个并发重复请求、单题新增/修改和非法输入校验。每个测试结束后会清理 `Question` 数据并关闭应用连接；最近一次验证为 11 个用例全部通过。
+
 ## 题库迁移
 
 在题库管理页可以导出 JSON，也可以批量导入符合以下结构的数据：

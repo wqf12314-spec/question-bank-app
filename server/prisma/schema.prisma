@@ -14,12 +14,43 @@ datasource db {
 }
 
 model Question {
-  id        Int      @id @default(autoincrement())
-  title     String
-  answer    String   @default("")
-  category  String
-  tags      String   @default("[]")
-  difficulty String  @default("基础")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  title           String
+  normalizedTitle String   @unique
+  version         Int      @default(1) // 记录修改批次，为后续识别并发覆盖提供依据。
+  answer          String   @default("")
+  category        String
+  tags            String   @default("[]")
+  difficulty      String   @default("基础")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum UserRole {
+  LEARNER
+  EDITOR
+  ADMIN
+}
+
+model User {
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  passwordHash    String
+  role            UserRole         @default(LEARNER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  refreshSessions RefreshSession[]
+}
+
+model RefreshSession {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

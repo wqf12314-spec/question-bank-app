@@ -126,6 +126,12 @@ async function clearQuestionBank() {
   );
   if (!confirmed) return;
 
+  const confirmationText = window.prompt(
+    '请输入“清空题库”以确认删除全部题目：'
+  );
+
+  if (confirmationText !== "清空题库") return;
+
   await questionsStore.clearQuestions();
   resetForm();
   searchKeyword.value = "";

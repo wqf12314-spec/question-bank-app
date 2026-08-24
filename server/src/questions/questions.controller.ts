@@ -7,23 +7,27 @@ import {
   Post,
   Patch,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { ImportQuestionsDto } from './dto/import-questions.dto';
+import { FindQuestionsDto } from './dto/find-questions.dto';
 @Controller('questions')
 export class QuestionsController {
   constructor(private readonly questionsService: QuestionsService) {}
 
   @Get()
-  findAll() {
-    return this.questionsService.findAll();
+  findAll(@Query() query: FindQuestionsDto) {
+    return this.questionsService.findAll(query);
   }
 
   @Get('count')
   async getCount() {
     const count = await this.questionsService.getCount();
-    return { count };
+    return {
+      count,
+    };
   }
 
   @Get(':id')

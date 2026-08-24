@@ -1,12 +1,38 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FindQuestionsDto } from './dto/find-questions.dto';
 
 @Injectable()
 export class QuestionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(query: FindQuestionsDto) {
+    const hasPagination =
+      query.page !== undefined || query.pageSize !== undefined;
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const skip = (page - 1) * pageSize;
     const questions = await this.prisma.question.findMany({
+      where: {
+        ...(query.keyword
+          ? {
+              OR: [
+                { title: { contains: query.keyword, mode: 'insensitive' } },
+                { answer: { contains: query.keyword, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+        ...(query.category ? { category: query.category } : {}),
+        ...(query.tag
+          ? {
+              tags: {
+                contains: `"${query.tag}"`,
+              },
+            }
+          : {}),
+      },
+
+      ...(hasPagination ? { skip, take: pageSize } : {}),
       orderBy: { id: 'asc' },
     });
 
@@ -23,7 +49,14 @@ export class QuestionsService {
     });
 
     if (!question) {
-      throw new NotFoundException(`Question ${id} not found`);
+      throw new NotFoundException({
+        // 稳定错误码供前端判断，message 只负责展示和排查。
+        success: false,
+        error: {
+          code: 'QUESTION_NOT_FOUND',
+          message: `Question ${id} not found`,
+        },
+      });
     }
 
     return this.toResponse(question);
@@ -39,6 +72,7 @@ export class QuestionsService {
     const question = await this.prisma.question.create({
       data: {
         title: data.title.trim(),
+        normalizedTitle: this.normalizeTitle(data.title),
         category: data.category,
         answer: data.answer ?? '',
         difficulty: data.difficulty ?? '基础',
@@ -78,9 +112,12 @@ export class QuestionsService {
         title: question.title.trim(),
         category: question.category,
         answer: question.answer ?? '',
+        normalizedTitle: this.normalizeTitle(question.title),
         difficulty: question.difficulty ?? '基础',
         tags: JSON.stringify(question.tags ?? []),
       })),
+      // 由数据库唯一索引原子处理并发冲突，避免先查后写的竞态。
+      skipDuplicates: true,
     });
 
     return {
@@ -89,19 +126,23 @@ export class QuestionsService {
     };
   }
 
-  async update(id: number, data: {
-    title: string;
-    category: string;
-    answer?: string;
-    difficulty?: string;
-    tags?: string[];
-  }) {
+  async update(
+    id: number,
+    data: {
+      title: string;
+      category: string;
+      answer?: string;
+      difficulty?: string;
+      tags?: string[];
+    },
+  ) {
     await this.findOne(id);
 
     const question = await this.prisma.question.update({
       where: { id },
       data: {
         title: data.title.trim(),
+        normalizedTitle: this.normalizeTitle(data.title),
         category: data.category,
         answer: data.answer ?? '',
         difficulty: data.difficulty ?? '基础',
