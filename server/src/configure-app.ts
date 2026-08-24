@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { json } from 'express';
+import cookieParser from 'cookie-parser';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 
@@ -9,7 +10,9 @@ export function configureApp(app: INestApplication): void {
       process.env.FRONTEND_URL ?? 'http://localhost:5173',
       'http://localhost:3000',
     ],
+    credentials: true,
   });
+  app.use(cookieParser());
   app.use(json({ limit: '2mb' }));
   app.useGlobalPipes(
     new ValidationPipe({

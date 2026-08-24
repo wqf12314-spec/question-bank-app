@@ -330,6 +330,8 @@ describe('AppController (e2e)', () => {
       password: 'correct-password-123',
     });
 
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
     const response = await request(app.getHttpServer())
       .post('/auth/login')
       .send({
@@ -337,12 +339,19 @@ describe('AppController (e2e)', () => {
         password: 'correct-password-123',
       })
       .expect(201);
+    process.env.NODE_ENV = previousNodeEnv;
 
     expect(response.body.data.user).toMatchObject({
       email: 'login-e2e@example.test',
       role: 'LEARNER',
     });
-    expect(response.body.data.refreshToken).toBeTruthy();
+    expect(response.body.data.refreshToken).toBeUndefined();
+    const loginCookie = response.headers['set-cookie'][0];
+    expect(loginCookie).toMatch(/^refresh_token=/i);
+    expect(loginCookie).toMatch(/HttpOnly/i);
+    expect(loginCookie).toMatch(/Secure/i);
+    expect(loginCookie).toMatch(/Path=\/auth/i);
+    expect(loginCookie).toMatch(/SameSite=Lax/i);
     const payload = jwt.verify(
       response.body.data.accessToken,
       process.env.ACCESS_TOKEN_SECRET!,
@@ -358,20 +367,21 @@ describe('AppController (e2e)', () => {
       email: 'rotation-e2e@example.test',
       password: 'correct-password-123',
     });
-    const login = await request(app.getHttpServer())
+    const browser = request.agent(app.getHttpServer());
+    const login = await browser
       .post('/auth/login')
       .send({
         email: 'rotation-e2e@example.test',
         password: 'correct-password-123',
       })
       .expect(201);
-    const oldRefreshToken = login.body.data.refreshToken;
+    const oldCookie = login.headers['set-cookie'][0].split(';')[0];
 
-    const refreshed = await request(app.getHttpServer())
+    const refreshed = await browser
       .post('/auth/refresh')
-      .send({ refreshToken: oldRefreshToken })
       .expect(201);
-    expect(refreshed.body.data.refreshToken).not.toBe(oldRefreshToken);
+    expect(refreshed.body.data.refreshToken).toBeUndefined();
+    expect(refreshed.headers['set-cookie'][0]).toMatch(/refresh_token=/i);
     expect(
       await app.get(PrismaService).refreshSession.count({
         where: { revokedAt: { not: null } },
@@ -380,16 +390,14 @@ describe('AppController (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
-      .send({ refreshToken: oldRefreshToken })
+      .set('Cookie', oldCookie)
       .expect(401);
 
-    await request(app.getHttpServer())
+    await browser
       .post('/auth/logout')
-      .send({ refreshToken: refreshed.body.data.refreshToken })
       .expect(201);
-    await request(app.getHttpServer())
+    await browser
       .post('/auth/refresh')
-      .send({ refreshToken: refreshed.body.data.refreshToken })
       .expect(401);
   });
 
