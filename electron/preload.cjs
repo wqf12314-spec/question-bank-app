@@ -16,5 +16,10 @@ contextBridge.exposeInMainWorld("desktopAPI", {
     export: (payload) => ipcRenderer.invoke("data:export", payload),
     import: () => ipcRenderer.invoke("data:import"),
   },
+  auth: {
+    login: (request) => ipcRenderer.invoke("auth:login", request),
+    refresh: (request) => ipcRenderer.invoke("auth:refresh", request),
+    logout: (request) => ipcRenderer.invoke("auth:logout", request),
+  },
   request: (request) => ipcRenderer.invoke("api:request", request),
 });
