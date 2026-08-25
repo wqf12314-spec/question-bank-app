@@ -467,4 +467,56 @@ describe('AppController (e2e)', () => {
       }),
     ).toBe(2);
   });
+
+  it('清空题库要求 ADMIN，且前端之外后端也会阻止危险操作', async () => {
+    const learner = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: 'learner-clear-e2e@example.test',
+        password: 'correct-password-123',
+      })
+      .expect(201);
+    const learnerLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: learner.body.data.email,
+        password: 'correct-password-123',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer()).delete('/questions').expect(401);
+    await request(app.getHttpServer())
+      .delete('/questions')
+      .set('Authorization', `Bearer ${learnerLogin.body.data.accessToken}`)
+      .expect(403);
+
+    const admin = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: 'admin-clear-e2e@example.test',
+        password: 'correct-password-123',
+      })
+      .expect(201);
+    await app.get(PrismaService).user.update({
+      where: { id: admin.body.data.id },
+      data: { role: 'ADMIN' },
+    });
+    const adminLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: admin.body.data.email,
+        password: 'correct-password-123',
+      })
+      .expect(201);
+    await request(app.getHttpServer()).post('/questions').send({
+      title: '__e2e_admin_clear__',
+      category: 'E2E测试',
+    });
+
+    const cleared = await request(app.getHttpServer())
+      .delete('/questions')
+      .set('Authorization', `Bearer ${adminLogin.body.data.accessToken}`)
+      .expect(200);
+    expect(cleared.body.data.deletedCount).toBe(1);
+  });
 });

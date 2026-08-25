@@ -8,11 +8,15 @@ import {
   Patch,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { ImportQuestionsDto } from './dto/import-questions.dto';
 import { FindQuestionsDto } from './dto/find-questions.dto';
+import { Roles } from '../auth/roles.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
 @Controller('questions')
 export class QuestionsController {
   constructor(private readonly questionsService: QuestionsService) {}
@@ -55,6 +59,8 @@ export class QuestionsController {
   }
 
   @Delete()
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   clear() {
     // 清空是高风险操作，Service 返回实际删除数量供前端确认结果。
     return this.questionsService.clear();
