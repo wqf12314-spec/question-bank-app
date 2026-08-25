@@ -3,6 +3,7 @@ import { test, beforeEach, afterEach } from "node:test";
 import {
   ApiError,
   apiFetch,
+  cancelPendingRequests,
   clearAccessToken,
   setAccessToken,
 } from "../src/utils/apiClient.js";
@@ -168,4 +169,54 @@ test("refresh failure triggers one logout and rejects every waiting request", as
   assert.equal(logoutCalls, 1);
   assert.equal(results.every((result) => result.status === "rejected"), true);
   assert.equal(results[0].reason.code, "REFRESH_REVOKED");
+});
+
+test("clearAccessToken cancels an in-flight request", async () => {
+  globalThis.fetch = (_url, options) =>
+    new Promise((_, reject) => {
+      options.signal.addEventListener(
+        "abort",
+        () => reject(new DOMException("Aborted", "AbortError")),
+        { once: true },
+      );
+    });
+
+  const pending = apiFetch("http://localhost/in-flight");
+  clearAccessToken();
+
+  await assert.rejects(
+    () => pending,
+    (error) => error instanceof ApiError && error.code === "REQUEST_ABORTED",
+  );
+});
+
+test("navigation cancellation cancels an in-flight request without clearing auth", async () => {
+  setAccessToken("still-valid");
+  globalThis.fetch = (_url, options) =>
+    new Promise((_, reject) => {
+      options.signal.addEventListener(
+        "abort",
+        () => reject(new DOMException("Aborted", "AbortError")),
+        { once: true },
+      );
+    });
+
+  const pending = apiFetch("http://localhost/page-data");
+  cancelPendingRequests("navigation");
+
+  await assert.rejects(
+    () => pending,
+    (error) => error instanceof ApiError && error.code === "REQUEST_ABORTED",
+  );
+
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.headers.get("Authorization"), "Bearer still-valid");
+    return new Response(JSON.stringify({ success: true, data: { ok: true } }), {
+      status: 200,
+    });
+  };
+  assert.deepEqual(
+    await (await apiFetch("http://localhost/next-page")).json(),
+    { ok: true },
+  );
 });

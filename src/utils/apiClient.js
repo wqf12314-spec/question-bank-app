@@ -1,6 +1,7 @@
 let accessToken = null;
 let refreshPromise = null;
 let logoutPromise = null;
+let sessionAbortController = new AbortController();
 
 export class ApiError extends Error {
   constructor(message, { status = 0, code = "REQUEST_ERROR", requestId } = {}) {
@@ -18,6 +19,13 @@ export function setAccessToken(token) {
 
 export function clearAccessToken() {
   accessToken = null;
+  sessionAbortController.abort("logout");
+  sessionAbortController = new AbortController();
+}
+
+export function cancelPendingRequests(reason = "navigation") {
+  sessionAbortController.abort(reason);
+  sessionAbortController = new AbortController();
 }
 
 function parseJson(text) {
@@ -148,7 +156,17 @@ async function sendRequest(url, requestOptions, timeoutMs) {
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
-  const timeout = createTimeoutController(timeoutMs, requestOptions.signal);
+  const requestController = new AbortController();
+  const requestSignals = [requestOptions.signal, sessionAbortController.signal];
+  const signalListeners = requestSignals
+    .filter(Boolean)
+    .map((signal) => {
+      const abort = () => requestController.abort(signal.reason);
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+      return { signal, abort };
+    });
+  const timeout = createTimeoutController(timeoutMs, requestController.signal);
 
   try {
     if (typeof window === "undefined" || !window.desktopAPI?.request) {
@@ -192,12 +210,20 @@ async function sendRequest(url, requestOptions, timeoutMs) {
       text: result.body || "",
     };
   } catch (error) {
-    if (error?.name === "AbortError" || timeout.signal.aborted) {
+    if (timeout.signal.aborted) {
+      if (timeout.signal.reason !== "timeout") {
+        throw new ApiError("Request was cancelled", {
+          code: "REQUEST_ABORTED",
+        });
+      }
       throw new ApiError("Request timed out", { code: "TIMEOUT" });
     }
     throw error;
   } finally {
     timeout.cleanup();
+    signalListeners.forEach(({ signal, abort }) =>
+      signal.removeEventListener("abort", abort),
+    );
   }
 }
 
