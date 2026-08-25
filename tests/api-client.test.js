@@ -128,3 +128,44 @@ test("concurrent 401 responses share one refresh request and replay once", async
   assert.equal(responses.length, 3);
   assert.deepEqual(await responses[0].json(), { ok: true });
 });
+
+test("refresh failure triggers one logout and rejects every waiting request", async () => {
+  let refreshCalls = 0;
+  let logoutCalls = 0;
+  setAccessToken("expired-access-token");
+
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("/auth/refresh")) {
+      refreshCalls += 1;
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: { code: "REFRESH_REVOKED", message: "Session revoked" },
+        }),
+        { status: 401, statusText: "Unauthorized" },
+      );
+    }
+    if (url.endsWith("/auth/logout")) {
+      logoutCalls += 1;
+      return new Response(JSON.stringify({ success: true, data: { success: true } }), {
+        status: 200,
+      });
+    }
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Access token expired" },
+      }),
+      { status: 401, statusText: "Unauthorized" },
+    );
+  };
+
+  const results = await Promise.allSettled(
+    Array.from({ length: 3 }, () => apiFetch("http://localhost/protected")),
+  );
+
+  assert.equal(refreshCalls, 1);
+  assert.equal(logoutCalls, 1);
+  assert.equal(results.every((result) => result.status === "rejected"), true);
+  assert.equal(results[0].reason.code, "REFRESH_REVOKED");
+});

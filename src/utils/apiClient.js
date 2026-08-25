@@ -1,5 +1,6 @@
 let accessToken = null;
 let refreshPromise = null;
+let logoutPromise = null;
 
 export class ApiError extends Error {
   constructor(message, { status = 0, code = "REQUEST_ERROR", requestId } = {}) {
@@ -89,6 +90,26 @@ async function refreshAccessToken(url) {
   return data.accessToken;
 }
 
+async function logoutAfterRefreshFailure(url) {
+  clearAccessToken();
+  const origin = new URL(url).origin;
+
+  try {
+    if (typeof window !== "undefined" && window.desktopAPI?.auth?.logout) {
+      await window.desktopAPI.auth.logout({ url: origin });
+      return;
+    }
+
+    // 退出请求绕过 apiFetch，避免刷新失败后再次触发刷新循环。
+    await fetch(`${origin}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // 原始刷新错误仍然要返回给所有等待请求，退出清理失败不能遮蔽它。
+  }
+}
+
 async function runSingleRefresh(url) {
   if (!refreshPromise) {
     refreshPromise = refreshAccessToken(url).finally(() => {
@@ -96,6 +117,15 @@ async function runSingleRefresh(url) {
     });
   }
   return refreshPromise;
+}
+async function runSingleLogout(url) {
+  if (!logoutPromise) {
+    logoutPromise = logoutAfterRefreshFailure(url).finally(() => {
+      logoutPromise = null;
+    });
+  }
+
+  return logoutPromise;
 }
 
 function createTimeoutController(timeoutMs, callerSignal) {
@@ -203,7 +233,7 @@ export async function apiFetch(url, options = {}) {
     try {
       await runSingleRefresh(url);
     } catch (error) {
-      clearAccessToken();
+      await runSingleLogout(url);
       throw error;
     }
     return apiFetch(url, { ...options, _authRetry: true });
