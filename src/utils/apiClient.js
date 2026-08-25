@@ -1,4 +1,5 @@
 let accessToken = null;
+let refreshPromise = null;
 
 export class ApiError extends Error {
   constructor(message, { status = 0, code = "REQUEST_ERROR", requestId } = {}) {
@@ -35,7 +36,6 @@ function unwrapApiData(payload) {
     // Store 继续消费原业务数据，响应协议差异集中留在请求层。
     return payload.data;
   }
-
   return payload;
 }
 
@@ -54,6 +54,50 @@ function getApiError(payload, status, statusText) {
   );
 }
 
+async function refreshAccessToken(url) {
+  const origin = new URL(url).origin;
+
+  if (typeof window !== "undefined" && window.desktopAPI?.auth?.refresh) {
+    const result = await window.desktopAPI.auth.refresh({ url: origin });
+    if (!result?.accessToken) {
+      throw new ApiError("Refresh response is missing access token", {
+        code: "REFRESH_FAILED",
+      });
+    }
+    setAccessToken(result.accessToken);
+    return result.accessToken;
+  }
+
+  const response = await fetch(`${origin}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+  });
+  const text = await response.text();
+  const payload = parseJson(text);
+  if (!response.ok) {
+    throw getApiError(payload, response.status, response.statusText);
+  }
+
+  const data = unwrapApiData(payload);
+  if (!data?.accessToken) {
+    throw new ApiError("Refresh response is missing access token", {
+      status: response.status,
+      code: "REFRESH_FAILED",
+    });
+  }
+  setAccessToken(data.accessToken);
+  return data.accessToken;
+}
+
+async function runSingleRefresh(url) {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken(url).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 function createTimeoutController(timeoutMs, callerSignal) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort("timeout"), timeoutMs);
@@ -69,27 +113,7 @@ function createTimeoutController(timeoutMs, callerSignal) {
   };
 }
 
-async function parseResponse({ ok, status, statusText, headers, text }) {
-  const payload = parseJson(text);
-  if (!ok) throw getApiError(payload, status, statusText);
-
-  return {
-    ok,
-    status,
-    statusText,
-    headers,
-    async json() {
-      return unwrapApiData(payload);
-    },
-    async text() {
-      return text;
-    },
-  };
-}
-
-export async function apiFetch(url, options = {}) {
-  const timeoutMs = options.timeoutMs ?? 10000;
-  const { timeoutMs: _timeoutMs, ...requestOptions } = options;
+async function sendRequest(url, requestOptions, timeoutMs) {
   const headers = new Headers(requestOptions.headers || {});
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
@@ -104,13 +128,13 @@ export async function apiFetch(url, options = {}) {
         credentials: requestOptions.credentials ?? "include",
         signal: timeout.signal,
       });
-      return parseResponse({
+      return {
         ok: response.ok,
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,
         text: await response.text(),
-      });
+      };
     }
 
     // 桌面端由主进程发请求，既避开 file:// 的跨域限制，也不关闭浏览器安全策略。
@@ -130,13 +154,13 @@ export async function apiFetch(url, options = {}) {
       }),
     ]);
 
-    return parseResponse({
+    return {
       ok: result.ok,
       status: result.status,
       statusText: result.statusText,
       headers: result.headers || {},
       text: result.body || "",
-    });
+    };
   } catch (error) {
     if (error?.name === "AbortError" || timeout.signal.aborted) {
       throw new ApiError("Request timed out", { code: "TIMEOUT" });
@@ -145,4 +169,45 @@ export async function apiFetch(url, options = {}) {
   } finally {
     timeout.cleanup();
   }
+}
+
+function createResponse(raw) {
+  const payload = parseJson(raw.text);
+  if (!raw.ok) throw getApiError(payload, raw.status, raw.statusText);
+
+  return {
+    ok: raw.ok,
+    status: raw.status,
+    statusText: raw.statusText,
+    headers: raw.headers,
+    async json() {
+      return unwrapApiData(payload);
+    },
+    async text() {
+      return raw.text;
+    },
+  };
+}
+
+export async function apiFetch(url, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 10000;
+  const retryingAfterRefresh = options._authRetry === true;
+  const {
+    timeoutMs: _timeoutMs,
+    _authRetry: _retry,
+    ...requestOptions
+  } = options;
+  const raw = await sendRequest(url, requestOptions, timeoutMs);
+
+  if (raw.status === 401 && !retryingAfterRefresh) {
+    try {
+      await runSingleRefresh(url);
+    } catch (error) {
+      clearAccessToken();
+      throw error;
+    }
+    return apiFetch(url, { ...options, _authRetry: true });
+  }
+
+  return createResponse(raw);
 }

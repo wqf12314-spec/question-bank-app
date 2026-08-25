@@ -84,3 +84,47 @@ test("apiFetch rejects requests that exceed the timeout", async () => {
     (error) => error instanceof ApiError && error.code === "TIMEOUT",
   );
 });
+
+test("concurrent 401 responses share one refresh request and replay once", async () => {
+  let refreshCalls = 0;
+  let protectedCalls = 0;
+  setAccessToken("expired-access-token");
+
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith("/auth/refresh")) {
+      refreshCalls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: { accessToken: "fresh-access-token" },
+        }),
+        { status: 200 },
+      );
+    }
+
+    protectedCalls += 1;
+    const authorization = options.headers.get("Authorization");
+    if (authorization === "Bearer fresh-access-token") {
+      return new Response(JSON.stringify({ success: true, data: { ok: true } }), {
+        status: 200,
+      });
+    }
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Access token expired" },
+      }),
+      { status: 401, statusText: "Unauthorized" },
+    );
+  };
+
+  const responses = await Promise.all(
+    Array.from({ length: 3 }, () => apiFetch("http://localhost/protected")),
+  );
+
+  assert.equal(refreshCalls, 1);
+  assert.equal(protectedCalls, 6);
+  assert.equal(responses.length, 3);
+  assert.deepEqual(await responses[0].json(), { ok: true });
+});
