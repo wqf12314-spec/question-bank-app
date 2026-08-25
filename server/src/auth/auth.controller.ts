@@ -74,4 +74,21 @@ export class AuthController {
     });
     return result;
   }
+
+  @Post('logout-all')
+  async logoutAll(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.logoutAll(
+      this.getRefreshToken(request),
+    );
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/auth',
+    });
+    return result;
+  }
 }

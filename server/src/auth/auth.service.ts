@@ -93,7 +93,11 @@ export class AuthService {
     return this.issueSession(user);
   }
 
-  private async issueSession(user: { id: number; email: string; role: string }) {
+  private async issueSession(user: {
+    id: number;
+    email: string;
+    role: string;
+  }) {
     const accessTokenSecret = this.getAccessTokenSecret();
     const { rawToken, tokenHash } = createRefreshToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -174,6 +178,28 @@ export class AuthService {
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    return { success: true };
+  }
+  async logoutAll(rawToken: string) {
+    const tokenHash = this.hashRefreshToken(rawToken);
+    const currentSession = await this.prisma.refreshSession.findUnique({
+      where: { tokenHash },
+      select: { userId: true },
+    });
+    if (!currentSession) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    await this.prisma.refreshSession.updateMany({
+      where: {
+        userId: currentSession.userId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
     return { success: true };
   }
 }

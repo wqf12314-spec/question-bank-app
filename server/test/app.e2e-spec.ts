@@ -427,4 +427,44 @@ describe('AppController (e2e)', () => {
       wrongPassword.body.error.message,
     );
   });
+
+  it('主动退出所有设备会撤销同一用户的全部 Session', async () => {
+    await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'logout-all-e2e@example.test',
+      password: 'correct-password-123',
+    });
+
+    const deviceA = request.agent(app.getHttpServer());
+    const deviceB = request.agent(app.getHttpServer());
+    await deviceA
+      .post('/auth/login')
+      .send({
+        email: 'logout-all-e2e@example.test',
+        password: 'correct-password-123',
+      })
+      .expect(201);
+    await deviceB
+      .post('/auth/login')
+      .send({
+        email: 'logout-all-e2e@example.test',
+        password: 'correct-password-123',
+      })
+      .expect(201);
+
+    expect(
+      await app.get(PrismaService).refreshSession.count({
+        where: { revokedAt: null },
+      }),
+    ).toBe(2);
+
+    await deviceA.post('/auth/logout-all').expect(201);
+
+    await deviceA.post('/auth/refresh').expect(401);
+    await deviceB.post('/auth/refresh').expect(401);
+    expect(
+      await app.get(PrismaService).refreshSession.count({
+        where: { revokedAt: { not: null } },
+      }),
+    ).toBe(2);
+  });
 });
