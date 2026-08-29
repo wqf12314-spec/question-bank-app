@@ -66,6 +66,8 @@ describe('AppController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     configureApp(app);
     await app.init();
+    // 显式监听一次，避免并发 Supertest 请求各自触发 listen/close 导致连接被重置。
+    await app.listen(0);
   });
 
   afterEach(async () => {
