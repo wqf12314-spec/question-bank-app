@@ -9,6 +9,7 @@ const {
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { createApiUrlValidator } = require("./api-origin.cjs");
 const { createTokenVault } = require("./token-vault.cjs");
 
@@ -36,6 +37,10 @@ function getTokenVault() {
   return createTokenVault({
     safeStorage,
     filePath: path.join(app.getPath("userData"), TOKEN_FILE_NAME),
+    fallbackKey:
+      process.platform === "linux" && process.env.NODE_ENV === "test"
+        ? crypto.createHash("sha256").update(app.getPath("userData")).digest()
+        : undefined,
   });
 }
 

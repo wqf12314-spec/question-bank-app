@@ -34,3 +34,17 @@ test("token vault refuses plaintext fallback when secure storage is unavailable"
 
   await assert.rejects(() => vault.save("refresh-secret"), /不可用/);
 });
+
+test("token vault can use an explicitly supplied encrypted test fallback", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "knowledge-vault-"));
+  const filePath = path.join(directory, "refresh-token.bin");
+  const vault = createTokenVault({
+    safeStorage: { isEncryptionAvailable: () => false },
+    fallbackKey: "isolated-test-profile-key",
+    filePath,
+  });
+
+  await vault.save("refresh-secret");
+  assert.notEqual(await readFile(filePath, "utf8"), "refresh-secret");
+  assert.equal(await vault.load(), "refresh-secret");
+});
