@@ -58,8 +58,8 @@ jobs:
       - name: Start MinIO container
         run: |
           docker run --detach --name question-bank-minio --publish 9000:9000 \
-            --env MINIO_ROOT_USER=question_bank_ci \
-            --env MINIO_ROOT_PASSWORD=question_bank_ci_password \
+            --env MINIO_ROOT_USER=minioadmin \
+            --env MINIO_ROOT_PASSWORD=minioadmin \
             minio/minio:latest server /data --console-address :9001
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:9000/minio/health/ready; then
@@ -86,8 +86,8 @@ jobs:
         run: npm run test:minio
         env:
           MINIO_ENDPOINT: http://127.0.0.1:9000
-          MINIO_ROOT_USER: question_bank_ci
-          MINIO_ROOT_PASSWORD: question_bank_ci_password
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
 
       - name: Build Web
         run: npm run build
