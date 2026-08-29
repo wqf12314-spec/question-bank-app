@@ -576,9 +576,9 @@ test("Web 作答后 Electron 同账号可读取，桌面进程重启后会话仍
       .getByRole("dialog")
       .getByRole("button", { name: "登录", exact: true })
       .click();
-    await expect(
-      desktopPage.getByText(browserCrossClientUser.email, { exact: true }),
-    ).toBeVisible();
+    await expect(desktopPage.locator(".account-email")).toHaveText(
+      browserCrossClientUser.email,
+    );
     const desktopKeepLocalButton = desktopPage.getByRole("button", {
       name: "保留本地，暂不上传",
     });
@@ -601,9 +601,9 @@ test("Web 作答后 Electron 同账号可读取，桌面进程重启后会话仍
     await electronApp.close();
     electronApp = await launchDesktop();
     desktopPage = await electronApp.firstWindow();
-    await expect(
-      desktopPage.getByText(browserCrossClientUser.email, { exact: true }),
-    ).toBeVisible();
+    await expect(desktopPage.locator(".account-email")).toHaveText(
+      browserCrossClientUser.email,
+    );
     expect(await desktopPage.evaluate(() => window.desktopAPI?.isDesktop)).toBe(
       true,
     );
@@ -762,9 +762,9 @@ test("Electron IPC 上传报告字节进度并在进程重启后补传缺失分�
       .getByRole("dialog")
       .getByRole("button", { name: "登录", exact: true })
       .click();
-    await expect(
-      desktopPage.getByText(browserTestUser.email, { exact: true }),
-    ).toBeVisible();
+    await expect(desktopPage.locator(".account-email")).toHaveText(
+      browserTestUser.email,
+    );
     const keepLocalButton = desktopPage.getByRole("button", {
       name: "保留本地，暂不上传",
     });
@@ -834,9 +834,9 @@ test("Electron IPC 上传报告字节进度并在进程重启后补传缺失分�
     await electronApp.close();
     electronApp = await launchDesktop();
     desktopPage = await electronApp.firstWindow();
-    await expect(
-      desktopPage.getByText(browserTestUser.email, { exact: true }),
-    ).toBeVisible();
+    await expect(desktopPage.locator(".account-email")).toHaveText(
+      browserTestUser.email,
+    );
     await desktopPage.locator("details.desktop-tools > summary").click();
     await expect(
       desktopPage.getByRole("heading", { name: "题库管理" }),
