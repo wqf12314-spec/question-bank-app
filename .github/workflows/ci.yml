@@ -127,8 +127,19 @@ jobs:
         working-directory: server
 
       - name: Run PostgreSQL API E2E tests
-        run: npm run test:e2e -- --runInBand
+        run: npm run test:e2e -- --runInBand app.e2e-spec.ts
         working-directory: server
+
+      - name: Run MinIO object-storage E2E tests
+        run: npm run test:e2e:minio -- --runInBand
+        working-directory: server
+        env:
+          STORAGE_DRIVER: minio
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_ACCESS_KEY_ID: minioadmin
+          S3_SECRET_ACCESS_KEY: minioadmin
+          S3_BUCKET: question-bank-ci-e2e
+          S3_FORCE_PATH_STYLE: "true"
 
       - name: Run Redis and Worker integration tests
         run: npm run test:worker
