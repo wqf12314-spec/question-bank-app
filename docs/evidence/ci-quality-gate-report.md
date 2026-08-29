@@ -19,7 +19,7 @@
 - HTTP E2E 合计：`68/68`（app `62/62` + MinIO object-storage `6/6`）；并发练习重放 10/10 全部返回 `201`，数据库只保存一条记录。
 - CI 并发修复：E2E `beforeEach` 显式让 Nest HTTP Server 监听一次，避免 Supertest 并发请求各自触发 `listen(0)` 并在响应后互相 `close()`，从而在 CI 慢环境触发 `ECONNRESET`；并发 ImportJob、批量导入和练习重放场景本地复跑均通过。测试 `PrismaPg` 连接池同时显式设置为 20 作为慢 PostgreSQL 的连接余量，生产 Neon 适配器未改变。
 - Redis + BullMQ 独立 Worker：`5/5` 通过；使用本机 `redis-server` 的 `127.0.0.1:6380`，覆盖入队、永久/瞬时错误重试、Worker 退出后的 stalled 恢复和 Redis 故障降级。Redis 进程已在测试后关闭。
-- Playwright Chromium/Electron 冒烟：`6/6` 通过；包含登录、刷题、37% 暂停、浏览器/Electron 整进程重启续传和 ImportJob 进度。
+- Playwright Chromium/Electron 冒烟：本地 `7/7` 通过；包含登录、刷题、37% 暂停、浏览器/Electron 整进程重启续传、ImportJob 进度、审核发布和并发冲突。大文件夹具使用 JSON 空白填充，避免把 40 MiB 填充回传到页面；Linux CI 通过 `xvfb-run` 提供 Electron 显示环境。
 - 构建：Web `npm run build`、Electron renderer `npm run desktop:build`、NestJS/Worker `server/npm run build` 均通过。
 - 后端依赖复扫：`server/npm audit --audit-level=high` 仍报告 `deepmerge-ts` 经 Prisma 7 链路产生 `3 high`；`npm audit fix --force` 会降级 Prisma 主版本，本包未自动执行。
 
@@ -35,5 +35,6 @@
 
 - 本机未安装 Docker，无法在本地启动 GitHub Actions 同构的 service containers。
 - 本机临时 MinIO Windows 下载文件无法作为有效 Win32 进程启动，因此 `test:minio` 尚未取得本地真实成功记录；不会把脚本存在当成 MinIO 集成通过。
-- 没有执行 GitHub 远程 workflow、CodeQL Security 分析或 Dependabot PR；当前没有线上成功记录，相关清单继续保留未勾选。
+- 最新 GitHub 运行 `f99db8f` 的后端 E2E 已修复并发服务器生命周期问题，但浏览器冒烟暴露了三项独立问题：大文件夹具根级 `padding` 违反 schema、Linux Electron 缺少 `$DISPLAY`、冲突用例依赖前序测试数据；本轮均已修复并在本地 `7/7` 复跑通过。修复后的线上成功记录仍需推送新提交后确认，不能把本地通过等同于线上成功。
+- 没有执行 GitHub 远程 CodeQL Security 分析或 Dependabot PR；当前没有线上成功记录，相关清单继续保留未勾选。
 - 当前应用上传实现仍使用本地文件系统，MinIO service container 只是 CI 基础设施与独立探针，不代表产品已接入生产对象存储。

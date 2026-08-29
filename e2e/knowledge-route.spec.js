@@ -408,14 +408,6 @@ test("并发编辑冲突同时保留本地版本和服务器版本", async ({ pa
     await page.getByRole("button", { name: "完成", exact: true }).click();
   }
 
-  await page.goto("/#/questions");
-  const questionCard = page
-    .locator(".question-item")
-    .filter({ hasText: browserQuestionTitle });
-  await expect(questionCard).toBeVisible();
-  await questionCard.getByRole("button", { name: "编辑", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "编辑题目" })).toBeVisible();
-
   const loginResponse = await request.post(`${apiBaseUrl}/auth/login`, {
     data: browserTestUser,
   });
@@ -424,9 +416,34 @@ test("并发编辑冲突同时保留本地版本和服务器版本", async ({ pa
   const listResponse = await request.get(
     `${apiBaseUrl}/questions?keyword=${encodeURIComponent(browserQuestionTitle)}`,
   );
-  const question = (await listResponse.json()).data.find(
+  let question = (await listResponse.json()).data.find(
     (item) => item.title === browserQuestionTitle,
   );
+  if (!question) {
+    const createResponse = await request.post(`${apiBaseUrl}/questions`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: {
+        title: browserQuestionTitle,
+        answer: "用可恢复分片和服务端校验保证上传可靠性。",
+        category: "工程化",
+        tags: ["Playwright", "上传"],
+        difficulty: "进阶",
+      },
+    });
+    expect(createResponse.ok()).toBe(true);
+    question = (await createResponse.json()).data;
+  }
+
+  await page.goto("/#/questions");
+  // 题目可能是在应用首次加载后由 API 补种，刷新确保页面重新读取服务端列表。
+  await page.reload();
+  const questionCard = page
+    .locator(".question-item")
+    .filter({ hasText: browserQuestionTitle });
+  await expect(questionCard).toBeVisible();
+  await questionCard.getByRole("button", { name: "编辑", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "编辑题目" })).toBeVisible();
+
   const serverAnswer = "服务器中的并发修改";
   const externalUpdate = await request.patch(
     `${apiBaseUrl}/questions/${question.id}`,
@@ -445,7 +462,9 @@ test("并发编辑冲突同时保留本地版本和服务器版本", async ({ pa
   expect(externalUpdate.ok()).toBe(true);
 
   const localAnswer = "尚未提交成功的本地修改";
-  await page.getByLabel("答案", { exact: true }).fill(localAnswer);
+  await page
+    .getByLabel("答案 Markdown 编辑器", { exact: true })
+    .fill(localAnswer);
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
 
   const conflictPanel = page.locator(".conflict-panel");

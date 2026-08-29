@@ -172,26 +172,16 @@ export async function cleanupBrowserTestData() {
 
 async function createLargeQuestionBank(targetPath, questionTitle) {
   await mkdir(dirname(targetPath), { recursive: true });
+  // 用 JSON 允许的空白填充体积，避免把 40 MB 测试数据写进题目答案并回传到页面。
   const prefix = Buffer.from(
-    JSON.stringify({
-      schemaVersion: 1,
-      questions: [
-        {
-          title: questionTitle,
-          answer: "用可恢复分片和服务端校验保证上传可靠性。",
-          category: "工程化",
-          tags: ["Playwright", "上传"],
-          difficulty: "进阶",
-        },
-      ],
-    }).replace(/}$/, ',"padding":"'),
+    `{"schemaVersion":1,"questions":[{"title":${JSON.stringify(questionTitle)},"answer":"用可恢复分片和服务端校验保证上传可靠性。","category":"工程化","tags":["Playwright","上传"],"difficulty":"进阶"}]`,
   );
-  const suffix = Buffer.from('"}');
+  const suffix = Buffer.from("}");
   const totalBytes = 40 * 1024 * 1024 + 101;
   const paddingBytes = totalBytes - prefix.length - suffix.length;
   const output = createWriteStream(targetPath, { flags: "w" });
   output.write(prefix);
-  const chunk = Buffer.alloc(1024 * 1024, 0x61);
+  const chunk = Buffer.alloc(1024 * 1024, 0x20);
   let remaining = paddingBytes;
   while (remaining > 0) {
     const length = Math.min(remaining, chunk.length);
