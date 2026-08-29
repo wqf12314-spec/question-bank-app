@@ -50,7 +50,7 @@
     "eslint-plugin-vue": "^10.10.0",
     "globals": "^17.11.0",
     "jsdom": "^30.0.1",
-    "nanoid": "^3.3.18",
+    "nanoid": "^6.0.1",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "vite": "^5.3.1",
