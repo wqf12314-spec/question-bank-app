@@ -73,7 +73,7 @@ CI 质量门禁本地证据见 `docs/evidence/ci-quality-gate-report.md`：根�
 
 `npm run benchmark:upload` 会以固定 96 MiB 文件、12 个 8 MiB 分片、本机环回 HTTP 和每片 60 ms 延迟生成 `docs/evidence/upload-performance-report.md/json`。最近一次并发 1/3/6/10 的耗时分别为 1003.6/359.3/222.9/233.4 ms；配置并发 10 时浏览器同源请求峰值仍为 6。主线程增量 SHA-256 观察到 3 个 Long Task（总 169 ms、最长 68 ms），Worker 方案本次观察为 0 个；两者摘要一致。该数字只是本机基线，不能表述为生产最优并发、“零卡顿”或高并发能力。
 
-跨端练习记录已通过真实进程验证：Playwright 在 Web UI 写入记录后启动 Electron，用同一账号读取服务端记录；关闭整个 Electron 进程并以同一 userData 目录重启后，加密保存的 Refresh Token 能恢复会话并再次读取记录。测试过程中修复了登录后的会话级记录请求被路由导航取消的竞态；页面请求仍默认随导航取消，退出登录仍会取消全部会话请求。
+跨端练习记录已通过真实进程验证：Playwright 在 Web UI 写入记录后启动 Electron，用同一账号读取服务端记录；关闭整个 Electron 进程并以同一 userData 目录重启后，加密保存的 Refresh Token 能恢复会话并再次读取记录。Linux CI 测试启动时使用 `--password-store=basic` 适配无桌面密钥环的 runner，生产仍不允许安全存储不可用时明文回退。测试过程中修复了登录后的会话级记录请求被路由导航取消的竞态；页面请求仍默认随导航取消，退出登录仍会取消全部会话请求。
 
 上传完成后会调用 `POST /import-jobs` 创建异步导入任务，并通过 `GET /import-jobs/:id/events` 接收 SSE 快照和状态事件，重连时携带 `Last-Event-ID` 获取未读事件。任务会读取已合并的 JSON 文件并复用 QuestionsService 的数据库查重导入；`review-*` 还可消费已验证的 PDF 文字层和预置英文 PNG OCR，并记录 provider、字符数、近似文本 token、耗时、失败和 `cost: 0`。这里的近似文本 token 不是模型计费 token，当前未接入付费模型。MinIO 模式由 Worker 直接消费对象响应流、增量核对 SHA-256 后再解析；同一用户的 `idempotencyKey` 重复提交返回原任务。失败任务会保存 JSON 逐项报告（题目序号和原因），页面可下载报告并重新处理。本地已使用 `127.0.0.1:6380` 的 Redis、BullMQ 和独立 `dist/src/worker.js` 验证入队、并发限制、瞬时/永久错误重试差异及 Worker 退出后的 stalled 恢复；线上 Redis、对象存储和其他 OCR 语言仍未验证。
 
