@@ -1,0 +1,139 @@
+name: Verify application
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: question_bank_test_user
+          POSTGRES_PASSWORD: question_bank_test_password
+          POSTGRES_DB: question_bank_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U question_bank_test_user -d question_bank_test"
+          --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s --health-timeout=5s --health-retries=5
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: question_bank_ci
+          MINIO_ROOT_PASSWORD: question_bank_ci_password
+        ports: ["9000:9000"]
+        options: >-
+          --health-cmd="curl --fail http://localhost:9000/minio/health/live || exit 1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    env:
+      NODE_ENV: test
+      TEST_DATABASE_URL: postgresql://question_bank_test_user:question_bank_test_password@localhost:5432/question_bank_test?schema=public
+      DATABASE_URL: postgresql://question_bank_test_user:question_bank_test_password@localhost:5432/question_bank_test?schema=public
+      DIRECT_DATABASE_URL: postgresql://question_bank_test_user:question_bank_test_password@localhost:5432/question_bank_test?schema=public
+      ACCESS_TOKEN_SECRET: ci-only-access-token-secret
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Validate CI configuration contract
+        run: npm run ci:validate
+
+      - name: Check frontend formatting
+        run: npm run format:check
+
+      - name: Lint frontend and cross-platform code
+        run: npm run lint
+
+      - name: Run frontend unit tests
+        run: npm test
+
+      - name: Verify MinIO service container
+        run: npm run test:minio
+        env:
+          MINIO_ENDPOINT: http://127.0.0.1:9000
+          MINIO_ROOT_USER: question_bank_ci
+          MINIO_ROOT_PASSWORD: question_bank_ci_password
+
+      - name: Build Web
+        run: npm run build
+
+      - name: Build Electron renderer
+        run: npm run desktop:build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: server
+
+      - name: Check backend formatting
+        run: npm run format:check
+        working-directory: server
+
+      - name: Lint backend
+        run: npm run lint
+        working-directory: server
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: server
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        working-directory: server
+
+      - name: Apply migrations to isolated PostgreSQL
+        run: npx prisma migrate deploy
+        working-directory: server
+
+      - name: Run backend unit tests
+        run: npm test -- --runInBand
+        working-directory: server
+
+      - name: Run PostgreSQL API E2E tests
+        run: npm run test:e2e -- --runInBand
+        working-directory: server
+
+      - name: Run Redis and Worker integration tests
+        run: npm run test:worker
+        working-directory: server
+        env:
+          REDIS_URL: redis://127.0.0.1:6379/0
+
+      - name: Run Chromium and Electron smoke tests
+        run: npm run test:browser
+
+      - name: Build NestJS API and Worker
+        run: npm run build
+        working-directory: server

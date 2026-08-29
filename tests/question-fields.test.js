@@ -11,10 +11,11 @@ test("parseTags splits, trims, and removes empty tags", async () => {
   }
 
   assert.ok(fieldsModule, "question field helper should exist");
-  assert.deepEqual(
-    fieldsModule.parseTags("Vue, 响应式, , Proxy"),
-    ["Vue", "响应式", "Proxy"]
-  );
+  assert.deepEqual(fieldsModule.parseTags("Vue, 响应式, , Proxy"), [
+    "Vue",
+    "响应式",
+    "Proxy",
+  ]);
 });
 
 test("filterQuestions combines keyword and exact tag filtering", async () => {
@@ -32,17 +33,13 @@ test("filterQuestions combines keyword and exact tag filtering", async () => {
     },
   ];
 
-  assert.deepEqual(
-    filterQuestions(questions, "proxy", "Vue"),
-    [questions[0]]
-  );
+  assert.deepEqual(filterQuestions(questions, "proxy", "Vue"), [questions[0]]);
   assert.deepEqual(filterQuestions(questions, "", ""), questions);
 });
 
 test("filterRecommendations requires category and every selected tag", async () => {
-  const { filterRecommendations } = await import(
-    "../src/utils/questionFields.js"
-  );
+  const { filterRecommendations } =
+    await import("../src/utils/questionFields.js");
   const questions = [
     { id: 1, category: "前端", tags: ["Vue", "响应式"] },
     { id: 2, category: "前端", tags: ["Vue"] },
@@ -51,15 +48,14 @@ test("filterRecommendations requires category and every selected tag", async () 
 
   assert.deepEqual(
     filterRecommendations(questions, "前端", ["Vue", "响应式"]),
-    [questions[0]]
+    [questions[0]],
   );
   assert.deepEqual(filterRecommendations(questions, "", []), questions);
 });
 
 test("getTopicsForCategory returns only topics under the selected category", async () => {
-  const { getTopicsForCategory } = await import(
-    "../src/utils/questionFields.js"
-  );
+  const { getTopicsForCategory } =
+    await import("../src/utils/questionFields.js");
   const questions = [
     { category: "Vue", tags: ["ref", "响应式"] },
     { category: "Vue", tags: ["watch", "响应式"] },

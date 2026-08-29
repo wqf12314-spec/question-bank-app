@@ -6,6 +6,25 @@ import {
   House,
   LibraryBig,
 } from "lucide-vue-next";
+import { computed } from "vue";
+import { useAuthStore } from "../stores/auth";
+import { filterByPermission } from "../utils/permissions";
+
+const authStore = useAuthStore();
+const navItems = [
+  { to: "/", label: "首页", icon: House },
+  {
+    to: "/questions",
+    label: "题库",
+    icon: LibraryBig,
+    roles: ["LEARNER", "EDITOR", "ADMIN"],
+  },
+  { to: "/practice", label: "刷题", icon: BrainCircuit },
+  { to: "/stats", label: "统计", icon: BarChart3 },
+];
+const visibleNavItems = computed(() =>
+  filterByPermission(navItems, authStore.user),
+);
 </script>
 
 <template>
@@ -18,21 +37,9 @@ import {
       </div>
     </div>
 
-    <RouterLink to="/">
-      <House :size="20" />
-      <span>首页</span>
-    </RouterLink>
-    <RouterLink to="/questions">
-      <LibraryBig :size="20" />
-      <span>题库</span>
-    </RouterLink>
-    <RouterLink to="/practice">
-      <BrainCircuit :size="20" />
-      <span>刷题</span>
-    </RouterLink>
-    <RouterLink to="/stats">
-      <BarChart3 :size="20" />
-      <span>统计</span>
+    <RouterLink v-for="item in visibleNavItems" :key="item.to" :to="item.to">
+      <component :is="item.icon" :size="20" />
+      <span>{{ item.label }}</span>
     </RouterLink>
   </nav>
 </template>

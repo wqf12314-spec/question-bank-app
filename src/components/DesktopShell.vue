@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { defineAsyncComponent, ref } from "vue";
 import {
   BarChart3,
   BookOpenCheck,
@@ -11,9 +11,15 @@ import {
   X,
 } from "lucide-vue-next";
 import DataPortability from "./DataPortability.vue";
-import PracticePage from "../views/PracticePage.vue";
-import QuestionsPage from "../views/QuestionsPage.vue";
-import StatsPage from "../views/StatsPage.vue";
+import AccountAccess from "./AccountAccess.vue";
+import TelemetrySettings from "./TelemetrySettings.vue";
+const PracticePage = defineAsyncComponent(
+  () => import("../views/PracticePage.vue"),
+);
+const QuestionsPage = defineAsyncComponent(
+  () => import("../views/QuestionsPage.vue"),
+);
+const StatsPage = defineAsyncComponent(() => import("../views/StatsPage.vue"));
 
 const activeTool = ref("questions");
 const alwaysOnTop = ref(true);
@@ -34,6 +40,9 @@ async function toggleAlwaysOnTop() {
         <strong>知识航线</strong>
         <span>专注练习</span>
       </div>
+      <div class="desktop-account">
+        <AccountAccess compact />
+      </div>
       <div class="desktop-window-actions">
         <button
           type="button"
@@ -47,10 +56,19 @@ async function toggleAlwaysOnTop() {
         <button type="button" title="最小化" @click="desktopWindow.minimize()">
           <Minus :size="16" />
         </button>
-        <button type="button" title="最大化或还原" @click="desktopWindow.toggleMaximize()">
+        <button
+          type="button"
+          title="最大化或还原"
+          @click="desktopWindow.toggleMaximize()"
+        >
           <Maximize2 :size="14" />
         </button>
-        <button class="close-button" type="button" title="关闭" @click="desktopWindow.close()">
+        <button
+          class="close-button"
+          type="button"
+          title="关闭"
+          @click="desktopWindow.close()"
+        >
           <X :size="16" />
         </button>
       </div>
@@ -93,7 +111,13 @@ async function toggleAlwaysOnTop() {
 
         <QuestionsPage v-if="activeTool === 'questions'" />
         <StatsPage v-else-if="activeTool === 'stats'" />
-        <DataPortability v-else />
+        <div v-else class="desktop-data-settings">
+          <DataPortability />
+          <section aria-label="隐私与错误记录">
+            <h3>隐私与错误记录</h3>
+            <TelemetrySettings />
+          </section>
+        </div>
       </details>
     </main>
   </div>
@@ -140,6 +164,13 @@ async function toggleAlwaysOnTop() {
 .desktop-window-actions {
   display: flex;
   height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.desktop-account {
+  min-width: 0;
+  margin-left: auto;
+  padding-right: 4px;
   -webkit-app-region: no-drag;
 }
 
@@ -239,6 +270,15 @@ async function toggleAlwaysOnTop() {
 
 .desktop-tools > :deep(section) {
   padding: 0 12px 14px;
+}
+
+.desktop-data-settings > section {
+  padding: 0 12px 14px;
+}
+
+.desktop-data-settings h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
 }
 
 .desktop-tools :deep(.page-title) {

@@ -68,7 +68,11 @@ const metricItems = computed(() => [
         </div>
         <div class="activity-legend" aria-label="练习量颜色说明">
           <span>少</span>
-          <i v-for="level in [0, 1, 2, 3, 4]" :key="level" :class="`level-${level}`"></i>
+          <i
+            v-for="level in [0, 1, 2, 3, 4]"
+            :key="level"
+            :class="`level-${level}`"
+          ></i>
           <span>多</span>
         </div>
       </header>
@@ -106,10 +110,7 @@ const metricItems = computed(() => [
 
       <div class="page-card stats-distribution-card">
         <h2>二级知识点分布</h2>
-        <p
-          v-if="Object.keys(stats.tagCounts).length === 0"
-          class="empty-state"
-        >
+        <p v-if="Object.keys(stats.tagCounts).length === 0" class="empty-state">
           还没有题目标签
         </p>
         <dl v-else class="category-list">

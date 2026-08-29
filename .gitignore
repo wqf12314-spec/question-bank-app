@@ -10,6 +10,12 @@ Electron桌面版架构与面试笔记.md
 .DS_Store
 Thumbs.db
 *.local
+server/.data/
+server/*.traineddata
+e2e/.tmp/
+playwright-report/
+test-results/
+blob-report/
 
 .vscode/
 .idea/

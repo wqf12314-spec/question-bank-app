@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import pino from 'pino';
 import type { Response } from 'express';
 import type { RequestWithId } from '../middleware/request-id.middleware';
 
@@ -19,6 +20,8 @@ type ApiErrorResponse = {
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = pino({ name: 'question-bank-api-error' });
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
     const request = host.switchToHttp().getRequest<RequestWithId>();
@@ -28,6 +31,23 @@ export class ApiExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
     const payload =
       exception instanceof HttpException ? exception.getResponse() : null;
+
+    // 预期的 503（例如 readiness）已有业务告警；这里只记录真正未处理的 5xx。
+    if (
+      status >= HttpStatus.INTERNAL_SERVER_ERROR &&
+      !(exception instanceof HttpException)
+    ) {
+      this.logger.error(
+        {
+          requestId: request.requestId,
+          method: request.method,
+          route: request.route?.path || request.path,
+          error:
+            exception instanceof Error ? exception.message : String(exception),
+        },
+        'unhandled API exception',
+      );
+    }
 
     if (this.isApiErrorResponse(payload)) {
       response.status(status).json({

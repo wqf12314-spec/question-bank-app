@@ -351,7 +351,9 @@ body {
   color: #a9b7cc;
   font: inherit;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .cancel-button {
@@ -675,6 +677,219 @@ body {
 .import-preview ol {
   margin: 8px 0 0;
   padding-left: 24px;
+}
+
+.upload-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.upload-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #55d49e;
+}
+
+.upload-panel-header h2,
+.upload-panel-header p {
+  margin: 0;
+}
+
+.upload-panel-header h2 {
+  color: #f3f7ff;
+  font-size: 18px;
+}
+
+.upload-panel-header p,
+.upload-hint,
+.upload-progress-detail {
+  margin-top: 6px;
+  color: #a9b7cc;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.upload-select-button,
+.upload-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #35b87f;
+  border-radius: 6px;
+  background: transparent;
+  color: #55d49e;
+  font: inherit;
+  cursor: pointer;
+}
+
+.upload-select-button:disabled,
+.upload-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.upload-file-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.upload-file-summary > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.upload-file-summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-file-summary span {
+  color: #a9b7cc;
+  font-size: 13px;
+}
+
+.upload-icon-button {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: transparent;
+  color: #a9b7cc;
+  cursor: pointer;
+}
+
+.upload-progress-area {
+  display: grid;
+  gap: 6px;
+}
+
+.upload-progress-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.upload-progress-heading strong {
+  color: #55d49e;
+}
+
+.upload-progress-area progress {
+  width: 100%;
+  height: 10px;
+  accent-color: #35b87f;
+}
+
+.upload-progress-detail {
+  margin: 0;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.upload-actions button {
+  flex: 1 1 150px;
+}
+
+.upload-actions .upload-secondary-button {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f3f7ff;
+}
+
+.review-required-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a9b7cc;
+  font-size: 13px;
+}
+
+.import-review {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.import-review-question {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.import-review-question label {
+  display: grid;
+  gap: 5px;
+  color: #a9b7cc;
+  font-size: 13px;
+}
+
+.import-review-question input,
+.import-review-question textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+  color: #f3f7ff;
+  font: inherit;
+}
+
+.import-review-question textarea {
+  resize: vertical;
+}
+
+.import-review-suggestions {
+  border-left: 3px solid var(--color-info, #2f7abf);
+  padding-left: 0.75rem;
+  color: var(--color-text-muted, #4a5568);
+}
+
+.import-review-suggestions ul {
+  margin: 0.4rem 0 0.65rem;
+  padding-left: 1.2rem;
+}
+
+.upload-success {
+  margin: 0;
+  color: #55d49e;
+  font-weight: 700;
+}
+
+.upload-error {
+  margin: 0;
+  color: #ff8b8b;
 }
 
 .rating-section {

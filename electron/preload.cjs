@@ -1,5 +1,10 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+const uploadProgressCallbacks = new Map();
+ipcRenderer.on("upload:progress", (_event, progress) => {
+  uploadProgressCallbacks.get(progress?.requestId)?.(progress.completedBytes);
+});
+
 contextBridge.exposeInMainWorld("desktopAPI", {
   isDesktop: true,
   window: {
@@ -20,6 +25,19 @@ contextBridge.exposeInMainWorld("desktopAPI", {
     login: (request) => ipcRenderer.invoke("auth:login", request),
     refresh: (request) => ipcRenderer.invoke("auth:refresh", request),
     logout: (request) => ipcRenderer.invoke("auth:logout", request),
+  },
+  upload: {
+    part: async (request, onProgress) => {
+      if (typeof onProgress === "function") {
+        uploadProgressCallbacks.set(request.requestId, onProgress);
+      }
+      try {
+        return await ipcRenderer.invoke("upload:part", request);
+      } finally {
+        uploadProgressCallbacks.delete(request.requestId);
+      }
+    },
+    abort: (requestId) => ipcRenderer.invoke("upload:abort", requestId),
   },
   request: (request) => ipcRenderer.invoke("api:request", request),
 });

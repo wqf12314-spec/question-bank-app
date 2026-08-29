@@ -23,10 +23,10 @@ test("getQuestionHistory filters by question and sorts newest first", async () =
 
   assert.deepEqual(
     history.map((record) => record.id),
-    ["new", "old"]
+    ["new", "old"],
   );
   assert.deepEqual(
     records.map((record) => record.id),
-    originalOrder
+    originalOrder,
   );
 });

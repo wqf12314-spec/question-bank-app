@@ -31,7 +31,11 @@ export function parseLocalDataBackup(input) {
   ) {
     throw new Error("备份文件缺少 localStorage 对象");
   }
-  if (Object.values(payload.localStorage).some((value) => typeof value !== "string")) {
+  if (
+    Object.values(payload.localStorage).some(
+      (value) => typeof value !== "string",
+    )
+  ) {
     throw new Error("localStorage 中的值必须是字符串");
   }
 

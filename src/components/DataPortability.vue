@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
-import { Download, Upload } from "lucide-vue-next";
+import { CloudUpload, Download, Upload } from "lucide-vue-next";
+import { useAuthStore } from "../stores/auth";
 import { isDesktopApp, persistDesktopData } from "../utils/desktopData";
 import {
   createLocalDataBackup,
@@ -8,6 +9,7 @@ import {
 } from "../utils/localDataTransfer";
 
 const fileInput = ref(null);
+const authStore = useAuthStore();
 const notice = ref("");
 const error = ref("");
 
@@ -67,6 +69,10 @@ function chooseImportFile() {
   }
   fileInput.value?.click();
 }
+
+function openMigrationPreview() {
+  window.dispatchEvent(new Event("migration-preview:open"));
+}
 </script>
 
 <template>
@@ -83,6 +89,10 @@ function chooseImportFile() {
       <button type="button" @click="chooseImportFile">
         <Upload :size="17" aria-hidden="true" />
         导入备份
+      </button>
+      <button v-if="authStore.user" type="button" @click="openMigrationPreview">
+        <CloudUpload :size="17" aria-hidden="true" />
+        检查登录迁移
       </button>
       <input
         ref="fileInput"

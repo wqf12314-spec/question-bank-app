@@ -2,6 +2,7 @@ let accessToken = null;
 let refreshPromise = null;
 let logoutPromise = null;
 let sessionAbortController = new AbortController();
+let navigationAbortController = new AbortController();
 
 export class ApiError extends Error {
   constructor(message, { status = 0, code = "REQUEST_ERROR", requestId } = {}) {
@@ -17,15 +18,21 @@ export function setAccessToken(token) {
   accessToken = typeof token === "string" && token.length > 0 ? token : null;
 }
 
+export function getAccessToken() {
+  return accessToken;
+}
+
 export function clearAccessToken() {
   accessToken = null;
   sessionAbortController.abort("logout");
+  navigationAbortController.abort("logout");
   sessionAbortController = new AbortController();
+  navigationAbortController = new AbortController();
 }
 
 export function cancelPendingRequests(reason = "navigation") {
-  sessionAbortController.abort(reason);
-  sessionAbortController = new AbortController();
+  navigationAbortController.abort(reason);
+  navigationAbortController = new AbortController();
 }
 
 function parseJson(text) {
@@ -151,21 +158,23 @@ function createTimeoutController(timeoutMs, callerSignal) {
   };
 }
 
-async function sendRequest(url, requestOptions, timeoutMs) {
+async function sendRequest(url, requestOptions, timeoutMs, cancelOnNavigation) {
   const headers = new Headers(requestOptions.headers || {});
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
   const requestController = new AbortController();
-  const requestSignals = [requestOptions.signal, sessionAbortController.signal];
-  const signalListeners = requestSignals
-    .filter(Boolean)
-    .map((signal) => {
-      const abort = () => requestController.abort(signal.reason);
-      if (signal.aborted) abort();
-      else signal.addEventListener("abort", abort, { once: true });
-      return { signal, abort };
-    });
+  const requestSignals = [
+    requestOptions.signal,
+    sessionAbortController.signal,
+    cancelOnNavigation ? navigationAbortController.signal : null,
+  ];
+  const signalListeners = requestSignals.filter(Boolean).map((signal) => {
+    const abort = () => requestController.abort(signal.reason);
+    if (signal.aborted) abort();
+    else signal.addEventListener("abort", abort, { once: true });
+    return { signal, abort };
+  });
   const timeout = createTimeoutController(timeoutMs, requestController.signal);
 
   try {
@@ -251,9 +260,15 @@ export async function apiFetch(url, options = {}) {
   const {
     timeoutMs: _timeoutMs,
     _authRetry: _retry,
+    cancelOnNavigation = true,
     ...requestOptions
   } = options;
-  const raw = await sendRequest(url, requestOptions, timeoutMs);
+  const raw = await sendRequest(
+    url,
+    requestOptions,
+    timeoutMs,
+    cancelOnNavigation,
+  );
 
   if (raw.status === 401 && !retryingAfterRefresh) {
     try {

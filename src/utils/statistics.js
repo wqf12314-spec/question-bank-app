@@ -15,7 +15,7 @@ export function getStats(questions, records) {
     }, {});
 
   const practicedIds = new Set(
-    records.map((record) => String(record.questionId))
+    records.map((record) => String(record.questionId)),
   );
 
   const latestByQuestion = new Map();
@@ -35,9 +35,10 @@ export function getStats(questions, records) {
 
   const totalQuestions = questions.length;
   const practicedCount = practicedIds.size;
-  const practicePercent = totalQuestions === 0
-    ? 0
-    : Math.round((practicedCount / totalQuestions) * 100);
+  const practicePercent =
+    totalQuestions === 0
+      ? 0
+      : Math.round((practicedCount / totalQuestions) * 100);
 
   return {
     totalQuestions,

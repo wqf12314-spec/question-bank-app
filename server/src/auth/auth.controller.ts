@@ -54,7 +54,9 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const session = await this.authService.refresh(this.getRefreshToken(request));
+    const session = await this.authService.refresh(
+      this.getRefreshToken(request),
+    );
     this.setRefreshCookie(response, session.refreshToken);
     const { refreshToken: _refreshToken, ...publicSession } = session;
     return publicSession;

@@ -1,0 +1,12 @@
+ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "importJobId" TEXT;
+ALTER TABLE "ImportJob" ADD COLUMN IF NOT EXISTS "reviewRequired" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "ImportJob" ADD COLUMN IF NOT EXISTS "source" TEXT NOT NULL DEFAULT 'json';
+ALTER TABLE "ImportJob" ADD COLUMN IF NOT EXISTS "promptVersion" TEXT;
+ALTER TABLE "ImportJob" ADD COLUMN IF NOT EXISTS "confidence" DOUBLE PRECISION;
+ALTER TABLE "ImportJob" ADD COLUMN IF NOT EXISTS "reviewerId" INTEGER;
+CREATE INDEX IF NOT EXISTS "Question_importJobId_idx" ON "Question"("importJobId");
+ALTER TABLE "Question" ADD CONSTRAINT "Question_importJobId_fkey"
+  FOREIGN KEY ("importJobId") REFERENCES "ImportJob"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ImportJob" ADD CONSTRAINT "ImportJob_reviewerId_fkey"
+  FOREIGN KEY ("reviewerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX IF NOT EXISTS "ImportJob_reviewerId_idx" ON "ImportJob"("reviewerId");

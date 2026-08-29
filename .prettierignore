@@ -1,0 +1,14 @@
+node_modules/
+server/node_modules/
+dist/
+server/dist/
+server/generated/
+release/
+playwright-report/
+test-results/
+server/.data/
+e2e/.tmp/
+package-lock.json
+server/package-lock.json
+*.md
+server/prisma/migrations/

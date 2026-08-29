@@ -14,16 +14,35 @@ datasource db {
 }
 
 model Question {
-  id              Int      @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   title           String
-  normalizedTitle String   @unique
-  version         Int      @default(1) // 记录修改批次，为后续识别并发覆盖提供依据。
-  answer          String   @default("")
+  normalizedTitle String           @unique
+  version         Int              @default(1) // 记录修改批次，为后续识别并发覆盖提供依据。
+  answer          String           @default("")
   category        String
-  tags            String   @default("[]")
-  difficulty      String   @default("基础")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  tags            String           @default("[]")
+  difficulty      String           @default("基础")
+  reviewSuggestions String         @default("{}")
+  status          QuestionStatus   @default(DRAFT)
+  importJobId     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  practiceRecords PracticeRecord[]
+  favorites       Favorite[]
+  notes           Note[]
+  revisions       QuestionRevision[]
+  auditLogs       AuditLog[]
+  importJob       ImportJob?       @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([importJobId])
+}
+
+enum QuestionStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
 }
 
 enum UserRole {
@@ -40,6 +59,49 @@ model User {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   refreshSessions RefreshSession[]
+  practiceRecords PracticeRecord[]
+  favorites       Favorite[]
+  notes           Note[]
+  uploadSessions  UploadSession[]
+  fileObjects     FileObject[]
+  importJobs      ImportJob[]
+  revisions       QuestionRevision[]
+  auditLogs       AuditLog[]
+  reviewedImportJobs ImportJob[] @relation("ImportJobReviewer")
+}
+
+model QuestionRevision {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  editorId   Int
+  beforeJson String
+  afterJson  String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  editor   User     @relation(fields: [editorId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, createdAt])
+  @@index([editorId, createdAt])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    Int
+  action     String
+  entityType String
+  entityId   String
+  metadata   String   @default("{}")
+  createdAt  DateTime @default(now())
+
+  actor    User      @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  // 删除题目后保留审计记录，只解除可选的题目关联。
+  question Question? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  questionId Int?
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
 }
 
 model RefreshSession {
@@ -53,4 +115,179 @@ model RefreshSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PracticeRecord {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  clientRequestId String
+  questionId      Int
+  userAnswer      String   @default("")
+  result          String
+  mode            String   @default("write")
+  practicedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // 所有权必须落在数据库关系中，不能只靠前端记住用户。
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientRequestId])
+  @@index([userId, practicedAt])
+  @@index([questionId])
+}
+
+model Favorite {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  questionId Int
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // 同一个用户对同一道题只能收藏一次，数据库负责拦住并发重复写入。
+  @@unique([userId, questionId])
+  @@index([userId, createdAt])
+  @@index([questionId])
+}
+
+model Note {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  questionId Int
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // 个人备注按“用户 + 题目”唯一，保存操作可以安全地使用 upsert。
+  @@unique([userId, questionId])
+  @@index([userId, updatedAt])
+  @@index([questionId])
+}
+
+enum UploadSessionStatus {
+  CREATED
+  UPLOADING
+  UPLOADED
+  VERIFYING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model UploadSession {
+  id         String              @id @default(uuid())
+  userId     Int
+  objectKey  String
+  bucket     String?
+  uploadId   String?
+  storageBackend String            @default("filesystem")
+  fileName   String
+  size       Int
+  mime       String
+  sha256     String?
+  status     UploadSessionStatus @default(CREATED)
+  partSize   Int
+  expiresAt  DateTime
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parts UploadPart[]
+
+  @@index([objectKey])
+}
+
+model UploadPart {
+  id         Int       @id @default(autoincrement())
+  sessionId  String
+  partNumber Int
+  etag       String
+  size       Int
+  checksum   String?
+  uploadedAt DateTime  @default(now())
+
+  session UploadSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, partNumber])
+}
+
+model FileObject {
+  id         Int       @id @default(autoincrement())
+  objectKey  String
+  bucket     String?
+  storageBackend String @default("filesystem")
+  ownerId    Int
+  sha256     String
+  size       Int
+  mime       String
+  verifiedAt DateTime?
+  scanStatus String    @default("PENDING")
+  createdAt  DateTime  @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  importJobs ImportJob[]
+
+  @@index([ownerId, sha256])
+  @@unique([ownerId, sha256])
+  @@index([objectKey])
+}
+
+enum ImportJobStatus {
+  QUEUED
+  PARSING
+  VALIDATING
+  DEDUPING
+  WAITING_REVIEW
+  PUBLISHING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+model ImportJob {
+  id             String         @id @default(uuid())
+  userId         Int
+  fileObjectId   Int
+  requestId      String?
+  idempotencyKey String
+  pipelineVersion String        @default("v1")
+  reviewRequired  Boolean       @default(false)
+  source          String        @default("json")
+  promptVersion   String?
+  confidence      Float?
+  reviewerId      Int?
+  status         ImportJobStatus @default(QUEUED)
+  totalItems     Int            @default(0)
+  importedItems  Int            @default(0)
+  skippedItems   Int            @default(0)
+  failedItems    Int            @default(0)
+  parsingStartedAt DateTime?
+  parsingFinishedAt DateTime?
+  validatingStartedAt DateTime?
+  validatingFinishedAt DateTime?
+  parsingDurationMs Int?
+  validatingDurationMs Int?
+  errorMessage   String?
+  failureReport  String?
+  duplicateCandidates String?
+  extractionMetrics String?
+  createdAt      DateTime       @default(now())
+  startedAt      DateTime?
+  finishedAt     DateTime?
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileObject FileObject @relation(fields: [fileObjectId], references: [id], onDelete: Cascade)
+  questions  Question[]
+  reviewer   User?       @relation("ImportJobReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([fileObjectId])
+  @@unique([userId, idempotencyKey])
+  @@index([userId, fileObjectId, pipelineVersion])
 }

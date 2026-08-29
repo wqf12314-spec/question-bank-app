@@ -1,0 +1,181 @@
+{
+  "generatedAt": "2026-08-29T05:35:40.971Z",
+  "environment": {
+    "os": "win32 10.0.26200",
+    "cpu": "AMD Ryzen 7 5700X 8-Core Processor             ",
+    "cpuLogicalCount": 16,
+    "node": "v24.18.0",
+    "chromium": "151.0.7922.34",
+    "transport": "localhost HTTP with 60ms server delay per part"
+  },
+  "fixture": {
+    "totalBytes": 100663296,
+    "totalMiB": 96,
+    "partSize": 8388608,
+    "partSizeMiB": 8,
+    "partCount": 12
+  },
+  "concurrencyRuns": [
+    {
+      "concurrency": 1,
+      "durationMs": 1003.5999999940395,
+      "heapStartBytes": 9407088,
+      "heapPeakBytes": 9472479,
+      "heapDeltaBytes": 65391,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0,
+      "attempts": 12,
+      "attemptFailures": 0,
+      "finalFailures": 0,
+      "serverPeakConcurrency": 1,
+      "serverRequests": 12,
+      "invalidPartSizes": 0,
+      "throughputMiBPerSecond": 95.65563969765859,
+      "attemptFailureRate": 0,
+      "finalFailureRate": 0
+    },
+    {
+      "concurrency": 3,
+      "durationMs": 359.30000001192093,
+      "heapStartBytes": 9522735,
+      "heapPeakBytes": 9544987,
+      "heapDeltaBytes": 22252,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0,
+      "attempts": 12,
+      "attemptFailures": 0,
+      "finalFailures": 0,
+      "serverPeakConcurrency": 3,
+      "serverRequests": 12,
+      "invalidPartSizes": 0,
+      "throughputMiBPerSecond": 267.18619537104064,
+      "attemptFailureRate": 0,
+      "finalFailureRate": 0
+    },
+    {
+      "concurrency": 6,
+      "durationMs": 222.8999999910593,
+      "heapStartBytes": 9554171,
+      "heapPeakBytes": 9577671,
+      "heapDeltaBytes": 23500,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0,
+      "attempts": 12,
+      "attemptFailures": 0,
+      "finalFailures": 0,
+      "serverPeakConcurrency": 6,
+      "serverRequests": 12,
+      "invalidPartSizes": 0,
+      "throughputMiBPerSecond": 430.68640647757127,
+      "attemptFailureRate": 0,
+      "finalFailureRate": 0
+    },
+    {
+      "concurrency": 10,
+      "durationMs": 233.3999999910593,
+      "heapStartBytes": 9586835,
+      "heapPeakBytes": 9612620,
+      "heapDeltaBytes": 25785,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0,
+      "attempts": 12,
+      "attemptFailures": 0,
+      "finalFailures": 0,
+      "serverPeakConcurrency": 6,
+      "serverRequests": 12,
+      "invalidPartSizes": 0,
+      "throughputMiBPerSecond": 411.31105400033164,
+      "attemptFailureRate": 0,
+      "finalFailureRate": 0
+    }
+  ],
+  "recoveryRun": {
+    "durationMs": 282.5,
+    "heapStartBytes": 9627556,
+    "heapPeakBytes": 9654575,
+    "heapDeltaBytes": 27019,
+    "longTaskCount": 0,
+    "longTaskTotalMs": 0,
+    "longestTaskMs": 0,
+    "attempts": 13,
+    "attemptFailures": 1,
+    "finalFailures": 0,
+    "serverPeakConcurrency": 6,
+    "serverRequests": 13,
+    "injectedFailure": "part 4 first attempt returned HTTP 503"
+  },
+  "hashLocations": {
+    "mainThread": {
+      "value": "01f1e93d0f5529e91d01928ee3e20f3160cccb1f66d61a298db332e9459c0802",
+      "durationMs": 665.3999999910593,
+      "heapStartBytes": 9663667,
+      "heapPeakBytes": 67978587,
+      "heapDeltaBytes": 58314920,
+      "longTaskCount": 3,
+      "longTaskTotalMs": 169,
+      "longestTaskMs": 68
+    },
+    "worker": {
+      "value": "01f1e93d0f5529e91d01928ee3e20f3160cccb1f66d61a298db332e9459c0802",
+      "durationMs": 651.3999999910593,
+      "heapStartBytes": 67979427,
+      "heapPeakBytes": 67990589,
+      "heapDeltaBytes": 11162,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0
+    },
+    "digestsMatch": true
+  },
+  "hashStrategies": {
+    "preHash": {
+      "value": {
+        "digest": "01f1e93d0f5529e91d01928ee3e20f3160cccb1f66d61a298db332e9459c0802",
+        "upload": {
+          "durationMs": 357,
+          "heapStartBytes": 68011045,
+          "heapPeakBytes": 68032868,
+          "heapDeltaBytes": 21823,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longestTaskMs": 0,
+          "attempts": 12,
+          "attemptFailures": 0,
+          "finalFailures": 0
+        }
+      },
+      "durationMs": 1062.4000000059605,
+      "heapStartBytes": 68006993,
+      "heapPeakBytes": 68033788,
+      "heapDeltaBytes": 26795,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0
+    },
+    "pipelined": {
+      "value": {
+        "digest": "01f1e93d0f5529e91d01928ee3e20f3160cccb1f66d61a298db332e9459c0802",
+        "attempts": 12,
+        "attemptFailures": 0,
+        "finalFailures": 0
+      },
+      "durationMs": 788.5999999940395,
+      "heapStartBytes": 68034300,
+      "heapPeakBytes": 68078352,
+      "heapDeltaBytes": 44052,
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestTaskMs": 0
+    },
+    "digestsMatch": true
+  },
+  "limitations": [
+    "Results describe this machine and a localhost transport, not production bandwidth or user traffic.",
+    "performance.memory is Chromium-specific and represents observed JavaScript heap, not total process RSS.",
+    "Long Task entries use the browser PerformanceObserver threshold of 50ms."
+  ]
+}

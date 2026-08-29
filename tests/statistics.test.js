@@ -57,20 +57,20 @@ test("buildPracticeActivity groups records by day for twelve weeks", async () =>
   const activity = buildPracticeActivity(
     records,
     84,
-    new Date(2026, 6, 24, 12)
+    new Date(2026, 6, 24, 12),
   );
 
   assert.equal(activity.length, 84);
   assert.deepEqual(
     activity.find((day) => day.date === "2026-07-23"),
-    { date: "2026-07-23", count: 2, level: 2, isFuture: false }
+    { date: "2026-07-23", count: 2, level: 2, isFuture: false },
   );
   assert.deepEqual(
     activity.find((day) => day.date === "2026-07-24"),
-    { date: "2026-07-24", count: 1, level: 1, isFuture: false }
+    { date: "2026-07-24", count: 1, level: 1, isFuture: false },
   );
   assert.equal(
     activity.find((day) => day.date === "2026-07-25").isFuture,
-    true
+    true,
   );
 });

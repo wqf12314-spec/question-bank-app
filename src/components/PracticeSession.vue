@@ -2,6 +2,11 @@
 import { computed, ref, watch } from "vue";
 import { getQuestionHistory } from "../utils/practiceRecords";
 import { usePracticeStore } from "../stores/practice";
+import { useAuthStore } from "../stores/auth";
+import { getErrorDetails } from "../utils/errorDisplay.js";
+import { scoreAnswer } from "../utils/answerScoring.js";
+import { explainReviewRecommendation } from "../utils/reviewSchedule.js";
+import { trackBehavior } from "../utils/behaviorTelemetry.js";
 
 const props = defineProps({
   question: {
@@ -28,13 +33,17 @@ const props = defineProps({
 
 const emit = defineEmits(["previous", "next"]);
 const practiceStore = usePracticeStore();
+const authStore = useAuthStore();
 const userAnswer = ref("");
 const answerMode = ref("text");
 const practiceMode = ref("write");
 const showAnswer = ref(false);
 const currentRecordId = ref(null);
+const currentClientRequestId = ref(null);
 const savedResult = ref("");
-
+const saving = ref(false);
+const saveError = ref("");
+const saveErrorRequestId = ref("");
 const resultLabelsByMode = {
   write: {
     wrong: "完全不对",
@@ -60,12 +69,22 @@ const currentResultLabels = computed(() => {
 const currentHistory = computed(() => {
   return getQuestionHistory(practiceStore.records, props.question.id);
 });
+const answerScore = computed(() =>
+  scoreAnswer({
+    answer: userAnswer.value,
+    expected: props.question.answer,
+    tags: props.question.tags,
+  }),
+);
 
 function resetAttempt() {
   userAnswer.value = "";
   showAnswer.value = false;
   currentRecordId.value = null;
+  currentClientRequestId.value = null;
   savedResult.value = "";
+  saveError.value = "";
+  saveErrorRequestId.value = "";
 }
 
 function selectPracticeMode(mode) {
@@ -78,22 +97,39 @@ function toggleAnswer() {
   showAnswer.value = !showAnswer.value;
 }
 
-function saveRecord(result) {
+async function saveRecord(result) {
+  if (saving.value) return;
+  saveError.value = "";
+  if (currentClientRequestId.value === null) {
+    currentClientRequestId.value = crypto.randomUUID();
+  }
   const values = {
     questionId: props.question.id,
+    clientRequestId: currentClientRequestId.value,
     userAnswer: userAnswer.value,
     result,
     mode: practiceMode.value,
   };
+  trackBehavior("self-rate", { questionId: props.question.id, result });
 
-  if (currentRecordId.value === null) {
-    currentRecordId.value = practiceStore.addRecord(values);
+  saving.value = true;
+  try {
+    if (currentRecordId.value === null) {
+      const saved = await practiceStore.saveRecord(values);
+      currentRecordId.value = saved.id;
+    } else if (authStore.user) {
+      await practiceStore.updateCloudRecord(currentRecordId.value, values);
+    } else {
+      practiceStore.updateRecord(currentRecordId.value, values);
+    }
     savedResult.value = result;
-    return;
+  } catch (error) {
+    // 网络失败时保留 clientRequestId，下一次重试仍指向同一业务请求。
+    saveError.value = error?.message || "保存练习记录失败，请稍后重试";
+    saveErrorRequestId.value = getErrorDetails(error).requestId;
+  } finally {
+    saving.value = false;
   }
-
-  const updated = practiceStore.updateRecord(currentRecordId.value, values);
-  if (updated) savedResult.value = result;
 }
 
 function formatPracticeTime(value) {
@@ -195,6 +231,7 @@ watch(() => props.question.id, resetAttempt);
       <div class="rating-actions">
         <button
           type="button"
+          :disabled="saving"
           :class="{ active: savedResult === 'wrong' }"
           @click="saveRecord('wrong')"
         >
@@ -202,6 +239,7 @@ watch(() => props.question.id, resetAttempt);
         </button>
         <button
           type="button"
+          :disabled="saving"
           :class="{ active: savedResult === 'partial' }"
           @click="saveRecord('partial')"
         >
@@ -209,6 +247,7 @@ watch(() => props.question.id, resetAttempt);
         </button>
         <button
           type="button"
+          :disabled="saving"
           :class="{ active: savedResult === 'correct' }"
           @click="saveRecord('correct')"
         >
@@ -218,6 +257,15 @@ watch(() => props.question.id, resetAttempt);
 
       <p v-if="savedResult" class="save-status">
         已记录：{{ currentResultLabels[savedResult] }}
+      </p>
+      <p v-if="savedResult" class="save-status">
+        复习建议：{{
+          explainReviewRecommendation({ result: savedResult })
+        }}；关键词覆盖 {{ Math.round(answerScore.keywordCoverage * 100) }}%
+      </p>
+      <p v-if="saveError" class="save-error" role="alert">{{ saveError }}</p>
+      <p v-if="saveErrorRequestId" class="save-error-request-id">
+        请求 ID：{{ saveErrorRequestId }}
       </p>
 
       <button

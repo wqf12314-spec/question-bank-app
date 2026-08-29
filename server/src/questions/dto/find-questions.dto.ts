@@ -2,6 +2,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsIn,
   MaxLength,
   Max,
   Min,
@@ -36,4 +37,8 @@ export class FindQuestionsDto {
   @IsString()
   @MaxLength(30)
   tag?: string;
+
+  @IsOptional()
+  @IsIn(['DRAFT', 'IN_REVIEW', 'PUBLISHED', 'REJECTED', 'ARCHIVED'])
+  status?: string;
 }

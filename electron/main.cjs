@@ -9,15 +9,22 @@ const {
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { createApiUrlValidator } = require("./api-origin.cjs");
 const { createTokenVault } = require("./token-vault.cjs");
 
-const API_ORIGINS = new Set([
-  "http://localhost:3002",
-  "https://question-bank-api-2vsg.onrender.com",
-]);
+const getApiUrl = createApiUrlValidator(
+  process.env.ELECTRON_ALLOWED_API_ORIGINS,
+);
 
 const DATA_FILE_NAME = "learning-data.json";
 const TOKEN_FILE_NAME = "refresh-token.bin";
+const MAX_IPC_UPLOAD_PART_BYTES = 16 * 1024 * 1024;
+const UPLOAD_STREAM_CHUNK_BYTES = 256 * 1024;
+const TEST_UPLOAD_CHUNK_DELAY_MS =
+  process.env.NODE_ENV === "test"
+    ? Math.max(0, Number(process.env.ELECTRON_UPLOAD_CHUNK_DELAY_MS) || 0)
+    : 0;
+const activeUploadRequests = new Map();
 let mainWindow;
 
 function getTokenVault() {
@@ -25,14 +32,6 @@ function getTokenVault() {
     safeStorage,
     filePath: path.join(app.getPath("userData"), TOKEN_FILE_NAME),
   });
-}
-
-function getApiUrl(url) {
-  const parsed = new URL(url);
-  if (!API_ORIGINS.has(parsed.origin)) {
-    throw new Error(`不允许访问该 API：${parsed.origin}`);
-  }
-  return parsed;
 }
 
 async function requestApi(url, options = {}) {
@@ -92,6 +91,77 @@ async function writeBackup(payload) {
   return targetPath;
 }
 
+function getUploadHeaders(headers = {}) {
+  const allowed = new Set(["authorization", "content-type", "x-request-id"]);
+  return Object.fromEntries(
+    Object.entries(headers)
+      .filter(([name]) => allowed.has(name.toLowerCase()))
+      .map(([name, value]) => [name, String(value)]),
+  );
+}
+
+function getUploadBody(body) {
+  const buffer = Buffer.from(body || []);
+  if (buffer.length === 0 || buffer.length > MAX_IPC_UPLOAD_PART_BYTES) {
+    throw new Error("分片大小超出 Electron IPC 允许范围");
+  }
+  return buffer;
+}
+
+async function uploadPartFromRenderer(event, request) {
+  const requestId = String(request?.requestId || "");
+  if (!requestId || activeUploadRequests.has(requestId)) {
+    throw new Error("无效或重复的上传请求编号");
+  }
+
+  const url = getApiUrl(request.url);
+  const body = getUploadBody(request.body);
+  const controller = new AbortController();
+  let offset = 0;
+  const stream = new ReadableStream({
+    async pull(streamController) {
+      if (offset >= body.length) {
+        streamController.close();
+        return;
+      }
+      if (TEST_UPLOAD_CHUNK_DELAY_MS > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, TEST_UPLOAD_CHUNK_DELAY_MS),
+        );
+      }
+      const end = Math.min(offset + UPLOAD_STREAM_CHUNK_BYTES, body.length);
+      streamController.enqueue(body.subarray(offset, end));
+      offset = end;
+      if (!event.sender.isDestroyed()) {
+        event.sender.send("upload:progress", {
+          requestId,
+          completedBytes: offset,
+          totalBytes: body.length,
+        });
+      }
+    },
+  });
+
+  activeUploadRequests.set(requestId, controller);
+  try {
+    const response = await net.fetch(url.toString(), {
+      method: "POST",
+      headers: getUploadHeaders(request.headers),
+      body: stream,
+      signal: controller.signal,
+      duplex: "half",
+    });
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      body: await response.text(),
+    };
+  } finally {
+    activeUploadRequests.delete(requestId);
+  }
+}
+
 function registerIpcHandlers() {
   ipcMain.handle("window:minimize", () => mainWindow?.minimize());
   ipcMain.handle("window:toggle-maximize", () => {
@@ -148,7 +218,10 @@ function registerIpcHandlers() {
     const { response, body } = await requestApi(`${request.url}/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: request.email, password: request.password }),
+      body: JSON.stringify({
+        email: request.email,
+        password: request.password,
+      }),
     });
     const data = getApiData(body);
     if (!response.ok) throw new Error(data);
@@ -203,6 +276,12 @@ function registerIpcHandlers() {
       statusText: response.statusText,
       body: await response.text(),
     };
+  });
+  ipcMain.handle("upload:part", uploadPartFromRenderer);
+  ipcMain.handle("upload:abort", (_event, requestId) => {
+    const controller = activeUploadRequests.get(String(requestId));
+    controller?.abort("renderer-abort");
+    return { aborted: Boolean(controller) };
   });
 }
 

@@ -184,9 +184,13 @@ export class AuthService {
     const tokenHash = this.hashRefreshToken(rawToken);
     const currentSession = await this.prisma.refreshSession.findUnique({
       where: { tokenHash },
-      select: { userId: true },
+      select: { userId: true, revokedAt: true, expiresAt: true },
     });
-    if (!currentSession) {
+    if (
+      !currentSession ||
+      currentSession.revokedAt ||
+      currentSession.expiresAt <= new Date()
+    ) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 

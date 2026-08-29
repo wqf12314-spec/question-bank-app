@@ -9,7 +9,7 @@ export function filterQuestions(
   questions,
   keyword,
   selectedTag,
-  selectedCategory = ""
+  selectedCategory = "",
 ) {
   const normalizedKeyword = keyword.trim().toLowerCase();
 

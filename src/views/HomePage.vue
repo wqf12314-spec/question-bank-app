@@ -30,7 +30,7 @@ const availableCategories = computed(() => {
 const availableTags = computed(() => {
   return getTopicsForCategory(
     questionsStore.questions,
-    selectedCategory.value
+    selectedCategory.value,
   ).sort((a, b) => a.localeCompare(b, "zh-CN"));
 });
 
@@ -38,7 +38,7 @@ const recommendationPool = computed(() => {
   return filterRecommendations(
     questionsStore.questions,
     selectedCategory.value,
-    selectedTags.value
+    selectedTags.value,
   );
 });
 

@@ -15,9 +15,9 @@ export type AuthenticatedUser = {
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext) {
-    const request = context.switchToHttp().getRequest<
-      Request & { user?: AuthenticatedUser }
-    >();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthenticatedUser }>();
     const header = request.header('authorization');
     const token = header?.startsWith('Bearer ')
       ? header.slice('Bearer '.length)

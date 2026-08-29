@@ -8,6 +8,7 @@ import {
   getTopicsForCategory,
 } from "../utils/questionFields";
 import { getAdjacentQuestion } from "../utils/questionNavigation";
+import { trackBehavior } from "../utils/behaviorTelemetry.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -26,7 +27,7 @@ const availableCategories = computed(() => {
 const availableTags = computed(() => {
   return getTopicsForCategory(
     questionsStore.questions,
-    selectedCategory.value
+    selectedCategory.value,
   ).sort((a, b) => a.localeCompare(b, "zh-CN"));
 });
 
@@ -34,7 +35,7 @@ const practicePool = computed(() => {
   return filterRecommendations(
     questionsStore.questions,
     selectedCategory.value,
-    selectedTags.value
+    selectedTags.value,
   );
 });
 
@@ -48,17 +49,20 @@ const currentQuestion = computed(() => {
   return (
     practicePool.value.find((question) => {
       return String(question.id) === String(questionId);
-    }) || practicePool.value[0] || null
+    }) ||
+    practicePool.value[0] ||
+    null
   );
 });
 
 function navigateQuestion(offset) {
   if (!currentQuestion.value || practicePool.value.length === 0) return;
+  trackBehavior("start-practice", { questionId: currentQuestion.value.id });
 
   const nextQuestion = getAdjacentQuestion(
     practicePool.value,
     currentQuestion.value.id,
-    offset
+    offset,
   );
 
   router.push({
@@ -95,7 +99,7 @@ watch(
       query: { questionId },
     });
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>
 
@@ -105,6 +109,29 @@ watch(
       <h1 class="page-title">刷题</h1>
       <RouterLink class="back-link" to="/questions">返回题库</RouterLink>
     </header>
+
+    <div
+      v-if="questionsStore.status === 'error'"
+      class="import-error"
+      role="alert"
+    >
+      <span>{{ questionsStore.error || "题目加载失败" }}</span>
+      <small v-if="questionsStore.errorRequestId"
+        >请求 ID：{{ questionsStore.errorRequestId }}</small
+      >
+      <button type="button" @click="questionsStore.loadQuestions()">
+        重试
+      </button>
+    </div>
+    <p
+      v-else-if="
+        questionsStore.status === 'loading' &&
+        questionsStore.questions.length === 0
+      "
+      class="upload-hint"
+    >
+      正在加载题库...
+    </p>
 
     <div class="home-filters practice-filters filter-panel">
       <label>

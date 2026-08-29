@@ -86,7 +86,8 @@ test("apiFetch rejects requests that exceed the timeout", async () => {
   );
 });
 
-test("concurrent 401 responses share one refresh request and replay once", async () => {
+test("10 concurrent 401 responses share one refresh request and replay once", async () => {
+  const requestCount = 10;
   let refreshCalls = 0;
   let protectedCalls = 0;
   setAccessToken("expired-access-token");
@@ -107,9 +108,12 @@ test("concurrent 401 responses share one refresh request and replay once", async
     protectedCalls += 1;
     const authorization = options.headers.get("Authorization");
     if (authorization === "Bearer fresh-access-token") {
-      return new Response(JSON.stringify({ success: true, data: { ok: true } }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({ success: true, data: { ok: true } }),
+        {
+          status: 200,
+        },
+      );
     }
     return new Response(
       JSON.stringify({
@@ -121,12 +125,15 @@ test("concurrent 401 responses share one refresh request and replay once", async
   };
 
   const responses = await Promise.all(
-    Array.from({ length: 3 }, () => apiFetch("http://localhost/protected")),
+    Array.from({ length: requestCount }, () =>
+      apiFetch("http://localhost/protected"),
+    ),
   );
 
   assert.equal(refreshCalls, 1);
-  assert.equal(protectedCalls, 6);
-  assert.equal(responses.length, 3);
+  // 每个请求先收到一次 401，再使用新 Token 重放一次。
+  assert.equal(protectedCalls, requestCount * 2);
+  assert.equal(responses.length, requestCount);
   assert.deepEqual(await responses[0].json(), { ok: true });
 });
 
@@ -148,9 +155,12 @@ test("refresh failure triggers one logout and rejects every waiting request", as
     }
     if (url.endsWith("/auth/logout")) {
       logoutCalls += 1;
-      return new Response(JSON.stringify({ success: true, data: { success: true } }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({ success: true, data: { success: true } }),
+        {
+          status: 200,
+        },
+      );
     }
     return new Response(
       JSON.stringify({
@@ -167,7 +177,10 @@ test("refresh failure triggers one logout and rejects every waiting request", as
 
   assert.equal(refreshCalls, 1);
   assert.equal(logoutCalls, 1);
-  assert.equal(results.every((result) => result.status === "rejected"), true);
+  assert.equal(
+    results.every((result) => result.status === "rejected"),
+    true,
+  );
   assert.equal(results[0].reason.code, "REFRESH_REVOKED");
 });
 
@@ -219,4 +232,45 @@ test("navigation cancellation cancels an in-flight request without clearing auth
     await (await apiFetch("http://localhost/next-page")).json(),
     { ok: true },
   );
+});
+
+test("session-level request survives navigation cancellation", async () => {
+  globalThis.fetch = (_url, options) =>
+    new Promise((resolve, reject) => {
+      options.signal.addEventListener("abort", () =>
+        reject(options.signal.reason),
+      );
+      setTimeout(
+        () =>
+          resolve(
+            new Response(JSON.stringify({ success: true, data: [{ id: 1 }] }), {
+              status: 200,
+            }),
+          ),
+        15,
+      );
+    });
+
+  const pending = apiFetch("https://api.example.test/practice-records", {
+    cancelOnNavigation: false,
+  });
+  cancelPendingRequests("navigation");
+
+  assert.deepEqual(await (await pending).json(), [{ id: 1 }]);
+});
+
+test("logout still cancels a session-level request", async () => {
+  globalThis.fetch = (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () =>
+        reject(options.signal.reason),
+      );
+    });
+
+  const pending = apiFetch("https://api.example.test/practice-records", {
+    cancelOnNavigation: false,
+  });
+  clearAccessToken();
+
+  await assert.rejects(pending, (error) => error.code === "REQUEST_ABORTED");
 });

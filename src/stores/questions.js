@@ -1,13 +1,8 @@
-// 部署时读取线上后端地址；本地没配置时继续使用本机后端。
-const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" && window.desktopAPI?.isDesktop
-    ? "https://question-bank-api-2vsg.onrender.com"
-    : "http://localhost:3002");
-
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
+import { API_BASE_URL } from "../config/api.js";
 import { apiFetch } from "../utils/apiClient.js";
+import { recordClientError } from "../utils/errorTelemetry.js";
 import {
   dedupeQuestionsByTitle,
   filterNewQuestions,
@@ -15,6 +10,10 @@ import {
 
 export const useQuestionsStore = defineStore("questions", () => {
   const questions = ref([]);
+  const status = ref("idle");
+  const error = ref("");
+  const errorRequestId = ref("");
+  let loadController = null;
 
   function addQuestion(question) {
     // 测试环境没有浏览器窗口，保留同步本地行为；真实页面走数据库。
@@ -103,6 +102,7 @@ export const useQuestionsStore = defineStore("questions", () => {
           category: nextQuestion.category,
           tags: nextQuestion.tags,
           difficulty: nextQuestion.difficulty,
+          version: nextQuestion.version,
         }),
       },
     );
@@ -116,6 +116,24 @@ export const useQuestionsStore = defineStore("questions", () => {
     return updatedQuestion;
   }
 
+  async function transitionStatus(questionId, nextStatus) {
+    const response = await apiFetch(
+      `${API_BASE_URL}/questions/${questionId}/status`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      },
+    );
+    if (!response.ok) throw new Error("更新题目状态失败");
+    const updated = await response.json();
+    const index = questions.value.findIndex(
+      (question) => question.id === questionId,
+    );
+    if (index !== -1) questions.value[index] = updated;
+    return updated;
+  }
+
   function removeQuestion(index) {
     if (typeof window === "undefined") {
       questions.value.splice(index, 1);
@@ -126,9 +144,12 @@ export const useQuestionsStore = defineStore("questions", () => {
 
   async function removeQuestionOnServer(index) {
     const question = questions.value[index];
-    const response = await apiFetch(`${API_BASE_URL}/questions/${question.id}`, {
-      method: "DELETE",
-    });
+    const response = await apiFetch(
+      `${API_BASE_URL}/questions/${question.id}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     if (!response.ok) {
       throw new Error("删除题目失败");
@@ -162,7 +183,7 @@ export const useQuestionsStore = defineStore("questions", () => {
 
   function loadLocalQuestions() {
     const saved = localStorage.getItem("question-bank");
-    let parsed = [];
+    let parsed;
 
     try {
       parsed = saved ? JSON.parse(saved) : [];
@@ -182,22 +203,55 @@ export const useQuestionsStore = defineStore("questions", () => {
     return result.duplicateCount;
   }
 
-  async function loadQuestions() {
+  async function loadQuestions(query = {}) {
     if (typeof window === "undefined") {
       return loadLocalQuestions();
     }
 
+    loadController?.abort("superseded");
+    const controller = new AbortController();
+    loadController = controller;
+    status.value = "loading";
+    error.value = "";
+    errorRequestId.value = "";
     try {
-      const response = await apiFetch(`${API_BASE_URL}/questions`);
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined && value !== null && value !== "")
+          params.set(key, String(value));
+      }
+      const suffix = params.toString() ? `?${params}` : "";
+      const response = await apiFetch(`${API_BASE_URL}/questions${suffix}`, {
+        signal: controller.signal,
+        // 题库 Store 同时服务 Web 页面和 Electron 外壳；旧搜索由上方 controller 取消。
+        cancelOnNavigation: false,
+      });
       if (!response.ok) {
         throw new Error("获取题目失败");
       }
       const data = await response.json();
       questions.value = data;
+      status.value = "success";
       return 0;
-    } catch (error) {
-      console.error(error);
+    } catch (caughtError) {
+      if (
+        caughtError?.code === "REQUEST_ABORTED" ||
+        caughtError?.name === "AbortError"
+      ) {
+        // 只有当前请求能改状态；被替换的旧请求不能覆盖新请求的 loading/success。
+        if (loadController === controller) {
+          status.value = questions.value.length > 0 ? "success" : "idle";
+        }
+        return 0;
+      }
+      console.error(caughtError);
+      recordClientError(caughtError, { feature: "questions.load" });
+      status.value = "error";
+      error.value = caughtError?.message || "获取题目失败";
+      errorRequestId.value = caughtError?.requestId || "";
       return loadLocalQuestions();
+    } finally {
+      if (loadController === controller) loadController = null;
     }
   }
   loadQuestions();
@@ -211,10 +265,14 @@ export const useQuestionsStore = defineStore("questions", () => {
 
   return {
     questions,
+    status,
+    error,
+    errorRequestId,
     addQuestion,
     addQuestions,
     importQuestions,
     updateQuestion,
+    transitionStatus,
     removeQuestion,
     clearQuestions,
     loadQuestions,

@@ -1,0 +1,18 @@
+ALTER TABLE "AuditLog" DROP CONSTRAINT IF EXISTS "AuditLog_questionId_fkey";
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_questionId_fkey"
+  FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "FileObject" ADD CONSTRAINT "FileObject_ownerId_sha256_key" UNIQUE ("ownerId", "sha256");
+
+ALTER TYPE "ImportJobStatus" ADD VALUE IF NOT EXISTS 'DEDUPING';
+ALTER TYPE "ImportJobStatus" ADD VALUE IF NOT EXISTS 'WAITING_REVIEW';
+ALTER TYPE "ImportJobStatus" ADD VALUE IF NOT EXISTS 'PUBLISHING';
+ALTER TYPE "ImportJobStatus" ADD VALUE IF NOT EXISTS 'PARTIAL';
+
+ALTER TABLE "ImportJob" ADD COLUMN "failedItems" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "ImportJob" ADD COLUMN "parsingStartedAt" TIMESTAMP(3);
+ALTER TABLE "ImportJob" ADD COLUMN "parsingFinishedAt" TIMESTAMP(3);
+ALTER TABLE "ImportJob" ADD COLUMN "validatingStartedAt" TIMESTAMP(3);
+ALTER TABLE "ImportJob" ADD COLUMN "validatingFinishedAt" TIMESTAMP(3);
+ALTER TABLE "ImportJob" ADD COLUMN "parsingDurationMs" INTEGER;
+ALTER TABLE "ImportJob" ADD COLUMN "validatingDurationMs" INTEGER;
