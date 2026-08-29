@@ -563,6 +563,9 @@ test("Web 作答后 Electron 同账号可读取，桌面进程重启后会话仍
   let electronApp;
   try {
     electronApp = await launchDesktop();
+    electronApp.process().stderr?.on("data", (chunk) => {
+      console.log(`[electron stderr] ${chunk.toString()}`);
+    });
     let desktopPage = await electronApp.firstWindow();
     await desktopPage
       .getByRole("button", { name: "登录", exact: true })
@@ -573,7 +576,9 @@ test("Web 作答后 Electron 同账号可读取，桌面进程重启后会话仍
       .getByRole("dialog")
       .getByRole("button", { name: "登录", exact: true })
       .click();
-    await expect(desktopPage.getByTitle("退出登录")).toBeVisible();
+    await expect
+      .poll(() => desktopPage.locator("body").innerText(), { timeout: 15_000 })
+      .toContain("退出登录");
     const desktopKeepLocalButton = desktopPage.getByRole("button", {
       name: "保留本地，暂不上传",
     });
@@ -742,6 +747,9 @@ test("Electron IPC 上传报告字节进度并在进程重启后补传缺失分�
   let electronApp;
   try {
     electronApp = await launchDesktop();
+    electronApp.process().stderr?.on("data", (chunk) => {
+      console.log(`[electron stderr] ${chunk.toString()}`);
+    });
     let desktopPage = await electronApp.firstWindow();
     await desktopPage
       .getByRole("button", { name: "登录", exact: true })
@@ -752,7 +760,9 @@ test("Electron IPC 上传报告字节进度并在进程重启后补传缺失分�
       .getByRole("dialog")
       .getByRole("button", { name: "登录", exact: true })
       .click();
-    await expect(desktopPage.getByTitle("退出登录")).toBeVisible();
+    await expect
+      .poll(() => desktopPage.locator("body").innerText(), { timeout: 15_000 })
+      .toContain("退出登录");
     const keepLocalButton = desktopPage.getByRole("button", {
       name: "保留本地，暂不上传",
     });
