@@ -30,8 +30,8 @@ npm run benchmark:upload
 ## 本次结果
 
 - Playwright：6/6。
-- 前端 Node 单测：74/74。
-- 后端单测：6/6；PostgreSQL E2E：56/56。
+- 前端 Node 单测：81/81。
+- 后端单测：12/12；PostgreSQL E2E：62/62。
 - 本地 Redis 6380 + 独立 BullMQ Worker：5/5，验证后 Redis 已关闭。
 - Web、Electron renderer、NestJS 和 `dist/src/worker.js` 构建通过。
 - Prisma validate 通过。

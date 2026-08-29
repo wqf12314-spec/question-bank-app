@@ -70,6 +70,7 @@ describe('AppController (e2e)', () => {
 
   afterEach(async () => {
     // 每个用例结束后清理测试数据，避免下次运行被上次结果影响。
+    await app.get(ImportJobsService).waitForIdle();
     await app.get(PrismaService).importJob.deleteMany();
     await app.get(PrismaService).fileObject.deleteMany();
     await app.get(PrismaService).uploadPart.deleteMany();

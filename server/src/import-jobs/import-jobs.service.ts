@@ -42,6 +42,8 @@ export class ImportJobsService implements OnModuleInit, OnModuleDestroy {
   private readonly questionValidator = this.ajv.compile(questionItemSchema);
   private readonly logger = pino({ name: 'question-bank-import-job' });
   private readonly queued = new Set<string>();
+  // 本地演示队列也需要可等待的生命周期，否则测试清理或优雅停机时后台任务仍会访问已关闭的数据库连接。
+  private readonly localTasks = new Set<Promise<void>>();
   private readonly events = new Map<
     string,
     Array<{ id: number; event: string; data: unknown }>
@@ -82,8 +84,15 @@ export class ImportJobsService implements OnModuleInit, OnModuleDestroy {
     this.recoveryTimer.unref?.();
   }
 
-  onModuleDestroy() {
+  async onModuleDestroy() {
     if (this.recoveryTimer) clearInterval(this.recoveryTimer);
+    await this.waitForIdle();
+  }
+
+  async waitForIdle() {
+    while (this.localTasks.size > 0) {
+      await Promise.allSettled([...this.localTasks]);
+    }
   }
 
   async create(
@@ -252,7 +261,20 @@ export class ImportJobsService implements OnModuleInit, OnModuleDestroy {
     this.queued.add(jobId);
     this.metrics.setQueueDepth(this.queued.size);
     // 没有配置 Redis 时保留单进程学习演示，生产部署应启动独立 Worker。
-    setImmediate(() => void this.processLocal(jobId));
+    const task = new Promise<void>((resolve) => {
+      setImmediate(async () => {
+        try {
+          await this.processLocal(jobId);
+        } finally {
+          resolve();
+        }
+      });
+    });
+    this.localTasks.add(task);
+    void task.then(
+      () => this.localTasks.delete(task),
+      () => this.localTasks.delete(task),
+    );
   }
 
   async processJob(jobId: string) {

@@ -6,20 +6,22 @@
 
 - 根目录 `npm run format:check`：通过。
 - 根目录 `npm run lint`：通过。
-- 根目录 `npm test`：74/74，通过；其中 2 个用例验证 CI 配置完整性和缺少 MinIO 时的失败路径。
+- 根目录 `npm test`：81/81，通过；其中用例验证 CI 配置完整性和缺少 MinIO 时的失败路径。
 - `server/npm run format:check`：通过。
 - `server/npm run lint`：通过。
-- `server/npm test -- --runInBand`：6/6，通过。
+- `server/npm test -- --runInBand`：12/12，通过。
 - `npm run ci:validate`：通过，确认 CI 声明 PostgreSQL、Redis、MinIO，且包含 format、lint、迁移、前后端测试和 Prisma 校验命令。
 - `npm audit --registry=https://registry.npmjs.org --omit=dev --audit-level=high`：前端初次扫描发现 `nanoid`/`postcss` high，已将兼容的 `nanoid` 3.3.18 与 `postcss` 8.5.23 固定到 lockfile；复扫结果为 0 个漏洞。后端扫描仍发现 Prisma 7 链路的 `@prisma/config`/`deepmerge-ts` 共 3 个 high；可用修复会降级 Prisma 到 6.x，未在本包强行改变 Prisma 主版本，保留为依赖升级决策项。
 
 ## 本轮最终复核（2026-08-29）
 
-- 独立 PostgreSQL API E2E：`56/56` 通过；测试连接 `server/.env.test` 的专用数据库，测试后清理数据。
+- 独立 PostgreSQL API E2E：`62/62` 通过；测试连接 `server/.env.test` 的专用数据库，清理前等待本地 ImportJob 队列排空，避免关闭 Prisma 连接后后台任务继续写库。
 - Redis + BullMQ 独立 Worker：`5/5` 通过；使用本机 `redis-server` 的 `127.0.0.1:6380`，覆盖入队、永久/瞬时错误重试、Worker 退出后的 stalled 恢复和 Redis 故障降级。Redis 进程已在测试后关闭。
 - Playwright Chromium/Electron 冒烟：`6/6` 通过；包含登录、刷题、37% 暂停、浏览器/Electron 整进程重启续传和 ImportJob 进度。
 - 构建：Web `npm run build`、Electron renderer `npm run desktop:build`、NestJS/Worker `server/npm run build` 均通过。
 - 后端依赖复扫：`server/npm audit --audit-level=high` 仍报告 `deepmerge-ts` 经 Prisma 7 链路产生 `3 high`；`npm audit fix --force` 会降级 Prisma 主版本，本包未自动执行。
+
+并发稳定性修复：本地降级队列现在登记所有已调度任务，并提供 `waitForIdle()`；E2E 清理先等待任务完成再删除测试数据。该修复针对线上曾出现的 `ImportJob_fileObjectId_fkey`、`Cannot use a pool after calling end on the pool` 和幂等读取竞态，不能替代多实例生产队列演练。
 
 ## CI 配置
 
