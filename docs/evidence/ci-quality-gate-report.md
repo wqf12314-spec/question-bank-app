@@ -20,7 +20,7 @@
 - CI 并发修复：E2E `beforeEach` 显式让 Nest HTTP Server 监听一次，避免 Supertest 并发请求各自触发 `listen(0)` 并在响应后互相 `close()`，从而在 CI 慢环境触发 `ECONNRESET`；并发 ImportJob、批量导入和练习重放场景本地复跑均通过。测试 `PrismaPg` 连接池同时显式设置为 20 作为慢 PostgreSQL 的连接余量，生产 Neon 适配器未改变。
 - Redis + BullMQ 独立 Worker：`5/5` 通过；使用本机 `redis-server` 的 `127.0.0.1:6380`，覆盖入队、永久/瞬时错误重试、Worker 退出后的 stalled 恢复和 Redis 故障降级。Redis 进程已在测试后关闭。
 - Playwright Chromium/Electron 冒烟：本地 `7/7` 通过；包含登录、刷题、37% 暂停、浏览器/Electron 整进程重启续传、ImportJob 进度、审核发布和并发冲突。大文件夹具使用 JSON 空白填充，避免把 40 MiB 填充回传到页面；Linux CI 通过 `xvfb-run` 提供 Electron 显示环境。
-- CI 运行 `33258867973`、`33259479337`、`33259784341` 和 `33260098730` 的真实失败均集中在 Electron Linux runner：该环境 `safeStorage.isEncryptionAvailable()` 返回 `false`，且 `--password-store=basic` 对 Electron 43 不足以提供系统密钥环。最终测试路径只在 `NODE_ENV=test` 的 Linux 隔离 profile 中派生 AES-GCM 测试密钥；生产代码仍坚持安全存储不可用且未显式提供 fallback 时拒绝保存，绝不明文落盘。之后需以最新推送运行确认线上结果。
+- CI 运行 `33258867973`、`33259479337`、`33259784341` 和 `33260098730` 的真实失败均集中在 Electron Linux runner：该环境 `safeStorage.isEncryptionAvailable()` 返回 `false`，且 `--password-store=basic` 对 Electron 43 不足以提供系统密钥环。最终测试路径只在 `NODE_ENV=test` 的 Linux 隔离 profile 中派生 AES-GCM 测试密钥；生产代码仍坚持安全存储不可用且未显式提供 fallback 时拒绝保存，绝不明文落盘。修复后的线上运行 `33260928900`（提交 `be6da7a`）已全部成功。
 - 构建：Web `npm run build`、Electron renderer `npm run desktop:build`、NestJS/Worker `server/npm run build` 均通过。
 - 后端依赖复扫：`server/npm audit --audit-level=high` 仍报告 `deepmerge-ts` 经 Prisma 7 链路产生 `3 high`；`npm audit fix --force` 会降级 Prisma 主版本，本包未自动执行。
 
