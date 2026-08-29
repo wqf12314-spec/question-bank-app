@@ -30,15 +30,19 @@ export class PracticeRecordsService {
         throw error;
       }
 
-      // 并发重试时，读取第一次成功保存的记录，避免重复新增。
-      return this.prisma.practiceRecord.findUniqueOrThrow({
-        where: {
-          userId_clientRequestId: {
-            userId: currentUserId,
-            clientRequestId: data.clientRequestId,
-          },
+      // 唯一键冲突可能先于对方事务提交可见，有限退避后再读，避免幂等请求误报 500。
+      const where = {
+        userId_clientRequestId: {
+          userId: currentUserId,
+          clientRequestId: data.clientRequestId,
         },
-      });
+      };
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const existing = await this.prisma.practiceRecord.findUnique({ where });
+        if (existing) return existing;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      return this.prisma.practiceRecord.findUniqueOrThrow({ where });
     }
   }
 
