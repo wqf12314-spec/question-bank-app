@@ -16,12 +16,13 @@
 ## 本轮最终复核（2026-08-29）
 
 - 独立 PostgreSQL API E2E：`62/62` 通过；测试连接 `server/.env.test` 的专用数据库，清理前等待本地 ImportJob 队列排空，避免关闭 Prisma 连接后后台任务继续写库。
+- HTTP E2E 合计：`68/68`（app `62/62` + MinIO object-storage `6/6`）；并发练习重放 10/10 全部返回 `201`，数据库只保存一条记录。
 - Redis + BullMQ 独立 Worker：`5/5` 通过；使用本机 `redis-server` 的 `127.0.0.1:6380`，覆盖入队、永久/瞬时错误重试、Worker 退出后的 stalled 恢复和 Redis 故障降级。Redis 进程已在测试后关闭。
 - Playwright Chromium/Electron 冒烟：`6/6` 通过；包含登录、刷题、37% 暂停、浏览器/Electron 整进程重启续传和 ImportJob 进度。
 - 构建：Web `npm run build`、Electron renderer `npm run desktop:build`、NestJS/Worker `server/npm run build` 均通过。
 - 后端依赖复扫：`server/npm audit --audit-level=high` 仍报告 `deepmerge-ts` 经 Prisma 7 链路产生 `3 high`；`npm audit fix --force` 会降级 Prisma 主版本，本包未自动执行。
 
-并发稳定性修复：本地降级队列现在登记所有已调度任务，并提供 `waitForIdle()`；E2E 清理先等待任务完成再删除测试数据。该修复针对线上曾出现的 `ImportJob_fileObjectId_fkey`、`Cannot use a pool after calling end on the pool` 和幂等读取竞态，不能替代多实例生产队列演练。
+并发稳定性修复：本地降级队列现在登记所有已调度任务，并提供 `waitForIdle()`；E2E 清理先等待任务完成再删除测试数据。PracticeRecord 幂等写入改用 PostgreSQL `ON CONFLICT DO NOTHING`（Prisma `createMany({ skipDuplicates: true })`），再以 `(userId, clientRequestId)` 查询并做最多约 2 秒指数退避，避免慢提交 runner 下的唯一键读取竞态。该修复针对线上曾出现的 `ImportJob_fileObjectId_fkey`、`Cannot use a pool after calling end on the pool` 和幂等读取竞态，不能替代多实例生产队列演练。
 
 ## CI 配置
 
