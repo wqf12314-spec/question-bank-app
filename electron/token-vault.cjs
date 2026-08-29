@@ -10,7 +10,10 @@ function createTokenVault({ safeStorage, filePath, fallbackKey }) {
       : crypto.createHash("sha256").update(String(fallbackKey)).digest();
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-    const ciphertext = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+    const ciphertext = Buffer.concat([
+      cipher.update(token, "utf8"),
+      cipher.final(),
+    ]);
     return [
       "aes-gcm-v1",
       iv.toString("base64url"),
