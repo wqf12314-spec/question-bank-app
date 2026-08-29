@@ -548,9 +548,9 @@ test("Web 作答后 Electron 同账号可读取，桌面进程重启后会话仍
     electron.launch({
       // Linux CI 没有桌面密钥环；basic password store 让 safeStorage 在隔离测试目录中可用。
       args: [
+        ...(process.platform === "linux" ? ["--password-store=basic"] : []),
         resolve("."),
         `--user-data-dir=${userDataDir}`,
-        ...(process.platform === "linux" ? ["--password-store=basic"] : []),
       ],
       cwd: resolve("."),
       env: {
@@ -725,9 +725,9 @@ test("Electron IPC 上传报告字节进度并在进程重启后补传缺失分�
     electron.launch({
       // Linux CI 没有桌面密钥环；basic password store 让 safeStorage 在隔离测试目录中可用。
       args: [
+        ...(process.platform === "linux" ? ["--password-store=basic"] : []),
         resolve("."),
         `--user-data-dir=${userDataDir}`,
-        ...(process.platform === "linux" ? ["--password-store=basic"] : []),
       ],
       cwd: resolve("."),
       env: {
