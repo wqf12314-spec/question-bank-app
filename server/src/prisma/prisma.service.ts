@@ -20,7 +20,11 @@ export class PrismaService
       );
     }
     const adapter = isTest
-      ? new PrismaPg({ connectionString })
+      ? new PrismaPg({
+          connectionString,
+          // CI 的并发 E2E 会同时发 10/12 个请求；显式留出连接余量，避免慢 PostgreSQL 下请求排队到测试超时。
+          max: Number(process.env.TEST_DATABASE_POOL_MAX || 20),
+        })
       : new PrismaNeon({ connectionString });
     super({ adapter });
   }

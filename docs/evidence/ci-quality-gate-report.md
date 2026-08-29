@@ -17,6 +17,7 @@
 
 - 独立 PostgreSQL API E2E：`62/62` 通过；测试连接 `server/.env.test` 的专用数据库，清理前等待本地 ImportJob 队列排空，避免关闭 Prisma 连接后后台任务继续写库。
 - HTTP E2E 合计：`68/68`（app `62/62` + MinIO object-storage `6/6`）；并发练习重放 10/10 全部返回 `201`，数据库只保存一条记录。
+- CI 并发修复：`PrismaPg` 测试连接池从默认 10 调整为 20，覆盖 10/12 路并发请求，避免慢 PostgreSQL 下连接池排队触发 Jest 清理阶段的 `ECONNRESET`；生产 Neon 适配器未改变。
 - Redis + BullMQ 独立 Worker：`5/5` 通过；使用本机 `redis-server` 的 `127.0.0.1:6380`，覆盖入队、永久/瞬时错误重试、Worker 退出后的 stalled 恢复和 Redis 故障降级。Redis 进程已在测试后关闭。
 - Playwright Chromium/Electron 冒烟：`6/6` 通过；包含登录、刷题、37% 暂停、浏览器/Electron 整进程重启续传和 ImportJob 进度。
 - 构建：Web `npm run build`、Electron renderer `npm run desktop:build`、NestJS/Worker `server/npm run build` 均通过。
