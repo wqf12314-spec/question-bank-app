@@ -12,6 +12,11 @@ const path = require("node:path");
 const { createApiUrlValidator } = require("./api-origin.cjs");
 const { createTokenVault } = require("./token-vault.cjs");
 
+// Linux CI 没有桌面密钥环；测试进程显式选择 Chromium basic password store，生产仍使用系统安全存储。
+if (process.platform === "linux" && process.env.NODE_ENV === "test") {
+  app.commandLine.appendSwitch("password-store", "basic");
+}
+
 const getApiUrl = createApiUrlValidator(
   process.env.ELECTRON_ALLOWED_API_ORIGINS,
 );
