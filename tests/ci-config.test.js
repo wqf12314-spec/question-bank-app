@@ -17,17 +17,24 @@ async function loadDocuments() {
   };
 }
 
-test("CI 门禁覆盖格式、lint、测试和三个 service containers", async () => {
+test("CI 门禁覆盖格式、lint、测试和数据库 service containers", async () => {
   const result = validateCiDocuments(await loadDocuments());
-  assert.deepEqual(result.services.sort(), ["minio", "postgres", "redis"]);
+  assert.deepEqual(result.services.sort(), ["postgres", "redis"]);
+  assert.equal(result.minioProvisioning, "job-container");
   assert.deepEqual(result.dependabotDirectories, ["/", "/server"]);
 });
 
 test("CI 配置缺少 MinIO 时契约校验会失败", async () => {
   const documents = await loadDocuments();
   delete documents.ci.jobs.verify.services.minio;
+  documents.ci.jobs.verify.steps = documents.ci.jobs.verify.steps.filter(
+    (step) =>
+      !String(step.run || "").includes(
+        "docker run --detach --name question-bank-minio",
+      ),
+  );
   assert.throws(
     () => validateCiDocuments(documents),
-    /CI 缺少 minio service container/,
+    /CI 缺少 MinIO service container 或显式容器启动步骤/,
   );
 });

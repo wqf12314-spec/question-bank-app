@@ -573,7 +573,10 @@ onBeforeUnmount(() => {
           >
             <strong>本地规则建议</strong>
             <ul>
-              <li v-for="reason in question.reviewSuggestions.reasons" :key="reason">
+              <li
+                v-for="reason in question.reviewSuggestions.reasons"
+                :key="reason"
+              >
                 {{ reason }}
               </li>
             </ul>

@@ -73,6 +73,7 @@ export function validateCiDocuments({ ci, codeql, dependabot }) {
 
   return {
     services: Object.keys(services),
+    minioProvisioning: services.minio ? "service-container" : "job-container",
     qualityGateCommands: steps.filter((step) => step.run).length,
     dependabotDirectories: [...dependabotDirectories].sort(),
   };

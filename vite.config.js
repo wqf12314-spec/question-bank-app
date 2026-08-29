@@ -3,10 +3,14 @@ import vue from "@vitejs/plugin-vue";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-const packageVersion = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
+const packageVersion = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+).version;
 let commit = "unknown";
 try {
-  commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
+  commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+    encoding: "utf8",
+  }).trim();
 } catch {
   // Source archives without .git still receive the package version.
 }

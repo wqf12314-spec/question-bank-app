@@ -16,7 +16,8 @@ try {
     report.events.push("smoke failed; pointer rolled back");
   }
   const active = await readFile(pointer, "utf8");
-  if (active !== report.previous) throw new Error("rollback did not restore stable release");
+  if (active !== report.previous)
+    throw new Error("rollback did not restore stable release");
   report.active = active;
   report.result = "passed";
   console.log(JSON.stringify(report));

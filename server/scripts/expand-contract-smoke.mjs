@@ -1,10 +1,10 @@
-import { randomUUID } from "node:crypto";
-import { config } from "dotenv";
-import pg from "pg";
+import { randomUUID } from 'node:crypto';
+import { config } from 'dotenv';
+import pg from 'pg';
 
-config({ path: new URL("../.env.test", import.meta.url) });
+config({ path: new URL('../.env.test', import.meta.url) });
 const connectionString = process.env.TEST_DATABASE_URL;
-if (!connectionString) throw new Error("TEST_DATABASE_URL is required");
+if (!connectionString) throw new Error('TEST_DATABASE_URL is required');
 
 const client = new pg.Client({ connectionString });
 const suffix = randomUUID();
@@ -20,10 +20,10 @@ try {
     [
       title,
       title,
-      "旧客户端答案",
-      "兼容性测试",
-      "[]",
-      "基础",
+      '旧客户端答案',
+      '兼容性测试',
+      '[]',
+      '基础',
       legacyTimestamp,
       legacyTimestamp,
     ],
@@ -37,17 +37,17 @@ try {
   if (
     !row ||
     row.title !== title ||
-    row.answer !== "旧客户端答案" ||
+    row.answer !== '旧客户端答案' ||
     row.version !== 1 ||
-    row.status !== "DRAFT" ||
+    row.status !== 'DRAFT' ||
     row.importJobId !== null
   ) {
-    throw new Error("expand-contract compatibility assertion failed");
+    throw new Error('expand-contract compatibility assertion failed');
   }
   console.log(
     JSON.stringify({
-      status: "ok",
-      scenario: "legacy-write-and-read-after-expand",
+      status: 'ok',
+      scenario: 'legacy-write-and-read-after-expand',
       version: row.version,
       statusValue: row.status,
     }),
