@@ -23,9 +23,15 @@ export function validateCiDocuments({ ci, codeql, dependabot }) {
   const services = verify?.services || {};
   const steps = verify?.steps || [];
 
-  for (const service of ["postgres", "redis", "minio"]) {
+  for (const service of ["postgres", "redis"]) {
     if (!services[service])
       problems.push(`CI 缺少 ${service} service container`);
+  }
+  if (
+    !services.minio &&
+    !stepRuns(steps, "docker run --detach --name question-bank-minio")
+  ) {
+    problems.push("CI 缺少 MinIO service container 或显式容器启动步骤");
   }
 
   for (const command of [
