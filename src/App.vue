@@ -14,13 +14,10 @@ const isDesktop = Boolean(window.desktopAPI?.isDesktop);
 const authStore = useAuthStore();
 const questionsStore = useQuestionsStore();
 const themeStore = useThemeStore();
-watch(
-  () => authStore.user?.id,
-  () => {
-    // 会话恢复可能取消启动期请求；身份稳定后重新读取当前账号可见题库。
-    void questionsStore.loadQuestions();
-  },
-);
+watch([() => authStore.isReady, () => authStore.user?.id], ([isReady]) => {
+  // 访客恢复失败也会取消启动请求，必须在会话确认后重新加载题库。
+  if (isReady) void questionsStore.loadQuestions();
+});
 </script>
 
 <template>
