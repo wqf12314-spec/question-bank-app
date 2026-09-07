@@ -79,11 +79,11 @@ async function logout() {
         </header>
 
         <label>
-          <span>邮箱</span>
+          <span>邮箱或手机号</span>
           <input
             v-model.trim="email"
-            type="email"
-            autocomplete="email"
+            type="text"
+            autocomplete="username"
             required
             maxlength="320"
           />
